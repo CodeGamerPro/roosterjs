@@ -21,6 +21,7 @@ import {
     toggleBlockQuote,
     removeLink,
     toggleHeader,
+    createVirtualTable,
 } from 'roosterjs-editor-api';
 import { Alignment, Indentation } from 'roosterjs-editor-types';
 import getCurrentEditor from './currentEditor';
@@ -84,6 +85,11 @@ export default function initFormatBar() {
     // ClearFormat
     document.getElementById('clearFormatButton').addEventListener('click', function() {
         clearFormat(getCurrentEditor());
+    });
+
+    // Test
+    document.getElementById('test').addEventListener('click', function() {
+        createVirtualTable(queryNodesWithSelection(getCurrentEditor(), 'table')[0] as HTMLTableElement);
     });
 
     // Header
