@@ -38,4 +38,7 @@ export { default as toggleUnderline } from './format/toggleUnderline';
 export { default as toggleHeader } from './format/toggleHeader';
 export { default as matchLink } from './linkMatch/matchLink';
 
-export { default as createVirtualTable, VirtualTable, VirtualTableCell, VirtualTableRow } from './table/createVirtualTable';
+export { default as createVirtualTable } from './table/createVirtualTable';
+export { default as editTable } from './table/editTable';
+export { default as virtualTableToTable } from './table/virtualTableToTable';
+export { default as VirtualTable, VirtualTableCell, VirtualTableRow } from './table/VirtualTable';

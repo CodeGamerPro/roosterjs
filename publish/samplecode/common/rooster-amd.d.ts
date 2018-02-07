@@ -172,6 +172,61 @@ export const enum ListState {
     Numbering = 2,
 }
 
+export const enum TableOperation {
+    /**
+     * Insert a row above current row
+     */
+    InsertAbove = 0,
+    /**
+     * Insert a row below current row
+     */
+    InsertBelow = 1,
+    /**
+     * Insert a column on the left of current column
+     */
+    InsertLeft = 2,
+    /**
+     * Insert a column on the right of current column
+     */
+    InsertRight = 3,
+    /**
+     * Delete the whole table
+     */
+    DeleteTable = 4,
+    /**
+     * Delete current column
+     */
+    DeleteColumn = 5,
+    /**
+     * Delete current row
+     */
+    DeleteRow = 6,
+    /**
+     * Merge current row with the row above
+     */
+    MergeAbove = 7,
+    /**
+     * Merge current row with the row below
+     */
+    MergeBelow = 8,
+    /**
+     * Merge current column with the column on the left
+     */
+    MergeLeft = 9,
+    /**
+     * Merge current column with the column on the right
+     */
+    MergeRight = 10,
+    /**
+     * Split current table cell horizontally
+     */
+    SplitHorizontally = 11,
+    /**
+     * Split current table cell vertically
+     */
+    SplitVertically = 12,
+}
+
 export const enum NodeType {
     Element = 1,
     Text = 3,
@@ -1308,6 +1363,27 @@ export function toggleHeader(editor: Editor, level: number): void;
  * The link data includes an original url and a normalized url
  */
 export function matchLink(url: string): LinkData;
+
+export function createVirtualTable(table: HTMLTableElement): VirtualTable;
+
+export function editTable(vtable: VirtualTable, currentCell: HTMLTableCellElement, operation: TableOperation): boolean;
+
+export function virtualTableToTable(vTable: VirtualTable): HTMLTableElement;
+
+export interface VirtualTable {
+    rows: VirtualTableRow[];
+    table: HTMLTableElement;
+}
+
+export interface VirtualTableCell {
+    spanLeft: boolean;
+    spanAbove: boolean;
+}
+
+export interface VirtualTableRow {
+    cells: (HTMLTableCellElement | VirtualTableCell)[];
+    tr: HTMLTableRowElement;
+}
 
 export class DefaultShortcut implements EditorPlugin {
     private editor;

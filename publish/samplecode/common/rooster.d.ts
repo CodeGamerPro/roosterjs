@@ -173,6 +173,61 @@ declare namespace roosterjs {
         Numbering = 2,
     }
 
+    const enum TableOperation {
+        /**
+         * Insert a row above current row
+         */
+        InsertAbove = 0,
+        /**
+         * Insert a row below current row
+         */
+        InsertBelow = 1,
+        /**
+         * Insert a column on the left of current column
+         */
+        InsertLeft = 2,
+        /**
+         * Insert a column on the right of current column
+         */
+        InsertRight = 3,
+        /**
+         * Delete the whole table
+         */
+        DeleteTable = 4,
+        /**
+         * Delete current column
+         */
+        DeleteColumn = 5,
+        /**
+         * Delete current row
+         */
+        DeleteRow = 6,
+        /**
+         * Merge current row with the row above
+         */
+        MergeAbove = 7,
+        /**
+         * Merge current row with the row below
+         */
+        MergeBelow = 8,
+        /**
+         * Merge current column with the column on the left
+         */
+        MergeLeft = 9,
+        /**
+         * Merge current column with the column on the right
+         */
+        MergeRight = 10,
+        /**
+         * Split current table cell horizontally
+         */
+        SplitHorizontally = 11,
+        /**
+         * Split current table cell vertically
+         */
+        SplitVertically = 12,
+    }
+
     const enum NodeType {
         Element = 1,
         Text = 3,
@@ -1309,6 +1364,27 @@ declare namespace roosterjs {
      * The link data includes an original url and a normalized url
      */
     function matchLink(url: string): LinkData;
+
+    function createVirtualTable(table: HTMLTableElement): VirtualTable;
+
+    function editTable(vtable: VirtualTable, currentCell: HTMLTableCellElement, operation: TableOperation): boolean;
+
+    function virtualTableToTable(vTable: VirtualTable): HTMLTableElement;
+
+    interface VirtualTable {
+        rows: VirtualTableRow[];
+        table: HTMLTableElement;
+    }
+
+    interface VirtualTableCell {
+        spanLeft: boolean;
+        spanAbove: boolean;
+    }
+
+    interface VirtualTableRow {
+        cells: (HTMLTableCellElement | VirtualTableCell)[];
+        tr: HTMLTableRowElement;
+    }
 
     class DefaultShortcut implements EditorPlugin {
         private editor;

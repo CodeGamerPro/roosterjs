@@ -22,8 +22,11 @@ import {
     removeLink,
     toggleHeader,
     createVirtualTable,
+    virtualTableToTable,
+    editTable,
+    execFormatWithUndo,
 } from 'roosterjs-editor-api';
-import { Alignment, Indentation } from 'roosterjs-editor-types';
+import { Alignment, Indentation, TableOperation } from 'roosterjs-editor-types';
 import getCurrentEditor from './currentEditor';
 
 export default function initFormatBar() {
@@ -87,9 +90,28 @@ export default function initFormatBar() {
         clearFormat(getCurrentEditor());
     });
 
-    // Test
-    document.getElementById('test').addEventListener('click', function() {
-        createVirtualTable(queryNodesWithSelection(getCurrentEditor(), 'table')[0] as HTMLTableElement);
+    // Edit table
+    document.getElementById('editTable').addEventListener('change', function() {
+        let select = document.getElementById('editTable') as HTMLSelectElement;
+        let intValue = parseInt(select.value);
+        if (intValue >= 0) {
+            let operation = <TableOperation>intValue;
+            let editor = getCurrentEditor();
+            let table = queryNodesWithSelection(editor, 'table')[0] as HTMLTableElement;
+            let td = queryNodesWithSelection(editor, 'td')[0] as HTMLTableCellElement;
+            if (table && td) {
+                let virtualTable = createVirtualTable(table);
+                if (editTable(virtualTable, td, operation)) {
+                    execFormatWithUndo(editor, () => {
+                        let newTable = virtualTableToTable(virtualTable);
+                        if (!newTable) {
+                            editor.deleteNode(table);
+                        }
+                    });
+                }
+            }
+            select.value = '-1';
+        }
     });
 
     // Header

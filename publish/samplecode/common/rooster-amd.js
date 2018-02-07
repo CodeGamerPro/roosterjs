@@ -379,6 +379,12 @@ var toggleHeader_1 = __webpack_require__(103);
 exports.toggleHeader = toggleHeader_1.default;
 var matchLink_1 = __webpack_require__(50);
 exports.matchLink = matchLink_1.default;
+var createVirtualTable_1 = __webpack_require__(104);
+exports.createVirtualTable = createVirtualTable_1.default;
+var editTable_1 = __webpack_require__(105);
+exports.editTable = editTable_1.default;
+var virtualTableToTable_1 = __webpack_require__(106);
+exports.virtualTableToTable = virtualTableToTable_1.default;
 
 
 /***/ }),
@@ -2263,15 +2269,15 @@ exports.default = CursorData;
 Object.defineProperty(exports, "__esModule", { value: true });
 var DefaultShortcut_1 = __webpack_require__(58);
 exports.DefaultShortcut = DefaultShortcut_1.default;
-var HyperLink_1 = __webpack_require__(104);
+var HyperLink_1 = __webpack_require__(107);
 exports.HyperLink = HyperLink_1.default;
-var ContentEdit_1 = __webpack_require__(105);
+var ContentEdit_1 = __webpack_require__(108);
 exports.ContentEdit = ContentEdit_1.default;
-var Paste_1 = __webpack_require__(106);
+var Paste_1 = __webpack_require__(109);
 exports.Paste = Paste_1.default;
 var ContentEditFeatures_1 = __webpack_require__(53);
 exports.getDefaultContentEditFeatures = ContentEditFeatures_1.getDefaultContentEditFeatures;
-var Watermark_1 = __webpack_require__(114);
+var Watermark_1 = __webpack_require__(117);
 exports.Watermark = Watermark_1.default;
 
 
@@ -3482,12 +3488,12 @@ function __export(m) {
 Object.defineProperty(exports, "__esModule", { value: true });
 var createEditor_1 = __webpack_require__(57);
 exports.createEditor = createEditor_1.default;
-__export(__webpack_require__(115));
+__export(__webpack_require__(118));
 __export(__webpack_require__(0));
 __export(__webpack_require__(2));
 __export(__webpack_require__(5));
 __export(__webpack_require__(29));
-__export(__webpack_require__(116));
+__export(__webpack_require__(119));
 
 
 /***/ }),
@@ -5834,7 +5840,6 @@ exports.default = insertImage;
 
 Object.defineProperty(exports, "__esModule", { value: true });
 var execFormatWithUndo_1 = __webpack_require__(1);
-var ZERO_WIDTH_SPACE = '&#8203;';
 /**
  * Insert table into editor at current selection
  * @param editor The editor instance
@@ -5861,7 +5866,6 @@ function insertTable(editor, columns, rows, format) {
             tr.appendChild(td);
             buildBorderStyle(td, format);
             td.style.width = getTableCellWidth(columns);
-            td.innerHTML = ZERO_WIDTH_SPACE;
         }
     }
     execFormatWithUndo_1.default(editor, function () {
@@ -6495,6 +6499,212 @@ exports.default = toggleHeader;
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
+function createVirtualTable(table) {
+    var virtualTable = {
+        table: table,
+        rows: [],
+    };
+    for (var r = 0; r < table.rows.length; r++) {
+        virtualTable.rows.push({
+            cells: [],
+            tr: table.rows[r],
+        });
+    }
+    for (var r = 0; r < table.rows.length; r++) {
+        var tr = table.rows[r];
+        var targetIndex = 0;
+        for (var c = 0; c < tr.cells.length; c++) {
+            var td = tr.cells[c];
+            for (; virtualTable.rows[r].cells[targetIndex]; targetIndex++) { }
+            for (var i = 0; i < td.colSpan; i++, targetIndex++) {
+                for (var j = 0; j < td.rowSpan; j++) {
+                    virtualTable.rows[r + j].cells[targetIndex] = i == 0 && j == 0 ? td : {
+                        spanLeft: i > 0,
+                        spanAbove: j > 0,
+                    };
+                }
+            }
+        }
+    }
+    return virtualTable;
+}
+exports.default = createVirtualTable;
+
+
+/***/ }),
+/* 105 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+function editTable(vtable, currentCell, operation) {
+    var position = getCurrentPosition(vtable, currentCell);
+    if (!position) {
+        return false;
+    }
+    var currentRowIndex = position[0], currentColumnIndex = position[1], currentRow = position[2];
+    switch (operation) {
+        case 0 /* InsertAbove */:
+        case 1 /* InsertBelow */:
+            var newRow = {
+                cells: [],
+                tr: currentRow.tr.cloneNode(false /*deep*/),
+            };
+            for (var _i = 0, _a = currentRow.cells; _i < _a.length; _i++) {
+                var cell = _a[_i];
+                newRow.cells.push(cell instanceof HTMLTableCellElement ?
+                    cell.cloneNode(false /*deep*/) :
+                    {
+                        spanLeft: cell.spanLeft,
+                        spanAbove: cell.spanAbove,
+                    });
+            }
+            vtable.rows.splice(currentRowIndex + (operation == 0 /* InsertAbove */ ? 0 : 1), 0, newRow);
+            return true;
+        case 2 /* InsertLeft */:
+        case 3 /* InsertRight */:
+            for (var i = 0; i < vtable.rows.length; i++) {
+                var cell = vtable.rows[i].cells[currentColumnIndex];
+                var newCell = cell instanceof HTMLTableCellElement ?
+                    cell.cloneNode(false /*deep*/) :
+                    {
+                        spanLeft: cell.spanLeft,
+                        spanAbove: cell.spanAbove,
+                    };
+                vtable.rows[i].cells.splice(currentColumnIndex + (operation == 2 /* InsertLeft */ ? 0 : 1), 0, newCell);
+            }
+            return true;
+        case 6 /* DeleteRow */:
+            var nextRow = vtable.rows[currentRowIndex + 1];
+            if (nextRow) {
+                for (var i = 0; i < currentRow.cells.length; i++) {
+                    var cell = currentRow.cells[i];
+                    if (cell instanceof HTMLTableCellElement && cell.rowSpan > 1 && nextRow.cells[i].spanAbove) {
+                        nextRow.cells[i] = cell;
+                    }
+                }
+            }
+            vtable.rows.splice(currentRowIndex, 1);
+            return true;
+        case 5 /* DeleteColumn */:
+            for (var i = 0; i < vtable.rows.length; i++) {
+                var row = vtable.rows[i];
+                var cell = row.cells[currentColumnIndex];
+                var nextCell = row.cells[currentColumnIndex + 1];
+                if (cell instanceof HTMLTableCellElement && cell.colSpan > 1 && nextCell && nextCell.spanLeft) {
+                    row.cells[currentColumnIndex + 1] = cell;
+                }
+                row.cells.splice(currentColumnIndex, 1);
+            }
+            return true;
+        case 7 /* MergeAbove */:
+        case 8 /* MergeBelow */:
+            var rowStep = operation == 7 /* MergeAbove */ ? -1 : 1;
+            var rowIndex = currentRowIndex + rowStep;
+            for (; rowIndex >= 0 && !(vtable.rows[rowIndex].cells[currentColumnIndex] instanceof HTMLTableCellElement); rowIndex += rowStep) { }
+            var aboveTd = vtable.rows[Math.min(rowIndex, currentRowIndex)].cells[currentColumnIndex];
+            var belowTd = vtable.rows[Math.max(rowIndex, currentRowIndex)].cells[currentColumnIndex];
+            if (aboveTd instanceof HTMLTableCellElement && belowTd instanceof HTMLTableCellElement && belowTd.colSpan == 1) {
+                while (belowTd.firstChild) {
+                    aboveTd.appendChild(belowTd.firstChild);
+                }
+                vtable.rows[Math.max(rowIndex, currentRowIndex)].cells[currentColumnIndex] = {
+                    spanAbove: true,
+                    spanLeft: false,
+                };
+                return true;
+            }
+            return false;
+        case 9 /* MergeLeft */:
+        case 10 /* MergeRight */:
+            var colStep = operation == 9 /* MergeLeft */ ? -1 : 1;
+            var colIndex = currentColumnIndex + colStep;
+            for (; colIndex >= 0 && !(vtable.rows[currentRowIndex].cells[colIndex] instanceof HTMLTableCellElement); colIndex += colStep) { }
+            var leftTd = vtable.rows[currentRowIndex].cells[Math.min(colIndex, currentColumnIndex)];
+            var rightTd = vtable.rows[currentRowIndex].cells[Math.max(colIndex, currentColumnIndex)];
+            if (leftTd instanceof HTMLTableCellElement && rightTd instanceof HTMLTableCellElement && rightTd.rowSpan == 1) {
+                while (rightTd.firstChild) {
+                    leftTd.appendChild(rightTd.firstChild);
+                }
+                vtable.rows[currentRowIndex].cells[Math.max(colIndex, currentColumnIndex)] = {
+                    spanAbove: false,
+                    spanLeft: true,
+                };
+                return true;
+            }
+            return false;
+        case 4 /* DeleteTable */:
+            vtable.rows = [];
+            vtable.table = null;
+            return true;
+    }
+}
+exports.default = editTable;
+function getCurrentPosition(vtable, cell) {
+    var r = 0;
+    var c = 0;
+    var row;
+    for (; r < vtable.rows.length; r++) {
+        row = vtable.rows[r];
+        for (c = 0; c < row.cells.length; c++) {
+            if (cell == row.cells[c]) {
+                return [r, c, row];
+            }
+        }
+    }
+    return null;
+}
+
+
+/***/ }),
+/* 106 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+function virtualTableToTable(vTable) {
+    var table = vTable.table;
+    if (table) {
+        removeChildren(table);
+        for (var r = 0; r < vTable.rows.length; r++) {
+            var row = vTable.rows[r];
+            var tr = row.tr;
+            removeChildren(tr);
+            table.appendChild(tr);
+            for (var c = 0; c < row.cells.length; c++) {
+                var cell = row.cells[c];
+                if (cell instanceof HTMLTableCellElement) {
+                    recalcSpans(cell, vTable, r, c);
+                    tr.appendChild(cell);
+                }
+            }
+        }
+    }
+    return table;
+}
+exports.default = virtualTableToTable;
+function recalcSpans(td, vTable, r, c) {
+    td.removeAttribute('colSpan');
+    td.removeAttribute('rowSpan');
+    for (var i = c + 1; i < vTable.rows[r].cells.length && vTable.rows[r].cells[i].spanLeft; td.colSpan = ++i - c) { }
+    for (var i = r + 1; i < vTable.rows.length && vTable.rows[i].cells[c].spanAbove; td.rowSpan = ++i - r) { }
+}
+function removeChildren(node) {
+    while (node.firstChild) {
+        node.removeChild(node.firstChild);
+    }
+}
+
+
+/***/ }),
+/* 107 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
 var roosterjs_editor_api_1 = __webpack_require__(5);
 var roosterjs_editor_core_1 = __webpack_require__(2);
 // When user type, they may end a link with a puncatuation, i.e. www.bing.com;
@@ -6649,7 +6859,7 @@ exports.default = HyperLink;
 
 
 /***/ }),
-/* 105 */
+/* 108 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -6845,7 +7055,7 @@ exports.default = ContentEdit;
 
 
 /***/ }),
-/* 106 */
+/* 109 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -6854,10 +7064,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 var roosterjs_editor_dom_1 = __webpack_require__(0);
 var roosterjs_editor_core_1 = __webpack_require__(2);
 var roosterjs_editor_api_1 = __webpack_require__(5);
-var buildClipboardData_1 = __webpack_require__(107);
-var convertPastedContentFromWord_1 = __webpack_require__(108);
-var removeUnsafeTags_1 = __webpack_require__(112);
-var removeUselessCss_1 = __webpack_require__(113);
+var buildClipboardData_1 = __webpack_require__(110);
+var convertPastedContentFromWord_1 = __webpack_require__(111);
+var removeUnsafeTags_1 = __webpack_require__(115);
+var removeUselessCss_1 = __webpack_require__(116);
 /**
  * Paste plugin, handles onPaste event and paste content into editor
  */
@@ -6999,7 +7209,7 @@ exports.default = Paste;
 
 
 /***/ }),
-/* 107 */
+/* 110 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -7130,15 +7340,15 @@ function normalizeContent(content) {
 
 
 /***/ }),
-/* 108 */
+/* 111 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
-var wordConverter_1 = __webpack_require__(109);
-var WordConverterArguments_1 = __webpack_require__(110);
-var converterUtils_1 = __webpack_require__(111);
+var wordConverter_1 = __webpack_require__(112);
+var WordConverterArguments_1 = __webpack_require__(113);
+var converterUtils_1 = __webpack_require__(114);
 /** Converts all the Word generated list items in the specified node into standard HTML UL and OL tags */
 function convertPastedContentFromWord(root) {
     var wordConverter = wordConverter_1.createWordConverter();
@@ -7159,7 +7369,7 @@ exports.default = convertPastedContentFromWord;
 
 
 /***/ }),
-/* 109 */
+/* 112 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -7181,7 +7391,7 @@ exports.createWordConverter = createWordConverter;
 
 
 /***/ }),
-/* 110 */
+/* 113 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -7204,7 +7414,7 @@ exports.createWordConverterArguments = createWordConverterArguments;
 
 
 /***/ }),
-/* 111 */
+/* 114 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -7691,7 +7901,7 @@ function resetCurrentLists(args) {
 
 
 /***/ }),
-/* 112 */
+/* 115 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -7730,7 +7940,7 @@ exports.default = removeUnsafeTags;
 
 
 /***/ }),
-/* 113 */
+/* 116 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -7823,7 +8033,7 @@ exports.default = removeUselessCss;
 
 
 /***/ }),
-/* 114 */
+/* 117 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -7919,7 +8129,7 @@ exports.default = Watermark;
 
 
 /***/ }),
-/* 115 */
+/* 118 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -7928,18 +8138,18 @@ Object.defineProperty(exports, "__esModule", { value: true });
 
 
 /***/ }),
-/* 116 */
+/* 119 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
-var ImageResizePlugin_1 = __webpack_require__(117);
+var ImageResizePlugin_1 = __webpack_require__(120);
 exports.ImageResizePlugin = ImageResizePlugin_1.default;
 
 
 /***/ }),
-/* 117 */
+/* 120 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";

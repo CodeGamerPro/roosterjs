@@ -1,20 +1,16 @@
-export interface VirtualTableCell {
-    node: Node;
-}
-
-export interface VirtualTableRow {
-    cells: VirtualTableCell[];
-}
-
-export interface VirtualTable {
-    rows: VirtualTableRow[];
-}
+import VirtualTable, { VirtualTableRow, VirtualTableCell } from './VirtualTable';
 
 export default function createVirtualTable(table: HTMLTableElement): VirtualTable {
-    let virtualTable = { rows: <VirtualTableRow[]>[] };
+    let virtualTable = {
+        table: table,
+        rows: <VirtualTableRow[]>[],
+    };
 
     for (let r = 0; r < table.rows.length; r++) {
-        virtualTable.rows.push({ cells: <VirtualTableCell[]>[] });
+        virtualTable.rows.push({
+            cells: <VirtualTableCell[]>[],
+            tr: table.rows[r],
+        });
     }
 
     for (let r = 0; r < table.rows.length; r++) {
@@ -22,12 +18,13 @@ export default function createVirtualTable(table: HTMLTableElement): VirtualTabl
         let targetIndex = 0;
         for (let c = 0; c < tr.cells.length; c++) {
             let td = tr.cells[c];
-            for (; virtualTable.rows[r].cells[targetIndex]; targetIndex++);
+            for (; virtualTable.rows[r].cells[targetIndex]; targetIndex++) {}
 
             for (let i = 0; i < td.colSpan; i++, targetIndex++) {
                 for (let j = 0; j < td.rowSpan; j++) {
-                    virtualTable.rows[r + j].cells[targetIndex] = {
-                        node: (i == 0 && j == 0) ? td : null,
+                    virtualTable.rows[r + j].cells[targetIndex] = i == 0 && j == 0 ? td : {
+                        spanLeft: i > 0,
+                        spanAbove: j > 0,
                     };
                 }
             }

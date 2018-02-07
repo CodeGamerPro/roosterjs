@@ -1,8 +1,6 @@
 import { Editor } from 'roosterjs-editor-core';
 import execFormatWithUndo from './execFormatWithUndo';
 
-const ZERO_WIDTH_SPACE = '&#8203;';
-
 /**
  * The table format
  */
@@ -69,7 +67,6 @@ export default function insertTable(
             tr.appendChild(td);
             buildBorderStyle(td, format);
             td.style.width = getTableCellWidth(columns);
-            td.innerHTML = ZERO_WIDTH_SPACE;
         }
     }
 
