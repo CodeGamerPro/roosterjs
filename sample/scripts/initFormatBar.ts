@@ -101,16 +101,17 @@ export default function initFormatBar() {
             let td = queryNodesWithSelection(editor, 'td')[0] as HTMLTableCellElement;
             if (table && td) {
                 let virtualTable = createVirtualTable(table);
-                if (editTable(virtualTable, td, operation)) {
-                    execFormatWithUndo(editor, () => {
+                execFormatWithUndo(editor, () => {
+                    if (editTable(virtualTable, td, operation)) {
                         let newTable = virtualTableToTable(virtualTable);
                         if (!newTable) {
                             editor.deleteNode(table);
                         }
-                    });
-                }
+                    }
+                });
             }
             select.value = '-1';
+            editor.focus();
         }
     });
 

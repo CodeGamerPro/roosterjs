@@ -78,11 +78,16 @@ export default function editTable(
         case TableOperation.MergeBelow:
             let rowStep = operation == TableOperation.MergeAbove ? -1 : 1;
             let rowIndex = currentRowIndex + rowStep;
-            for (; rowIndex >= 0 && !(vtable.rows[rowIndex].cells[currentColumnIndex] instanceof HTMLTableCellElement); rowIndex += rowStep) {}
+            for (;
+                    rowIndex >= 0 &&
+                    rowIndex < vtable.rows.length &&
+                    !(vtable.rows[rowIndex].cells[currentColumnIndex] instanceof HTMLTableCellElement) &&
+                    (<VirtualTableCell>vtable.rows[rowIndex].cells[currentColumnIndex]).spanAbove;
+                rowIndex += rowStep) {}
             let aboveTd = <HTMLTableCellElement>vtable.rows[Math.min(rowIndex, currentRowIndex)].cells[currentColumnIndex];
             let belowTd = <HTMLTableCellElement>vtable.rows[Math.max(rowIndex, currentRowIndex)].cells[currentColumnIndex];
 
-            if (aboveTd instanceof HTMLTableCellElement && belowTd instanceof HTMLTableCellElement && belowTd.colSpan == 1) {
+            if (aboveTd instanceof HTMLTableCellElement && belowTd instanceof HTMLTableCellElement && aboveTd.colSpan == belowTd.colSpan) {
                 while (belowTd.firstChild) {
                     aboveTd.appendChild(belowTd.firstChild);
                 }
@@ -99,11 +104,16 @@ export default function editTable(
         case TableOperation.MergeRight:
             let colStep = operation == TableOperation.MergeLeft ? -1 : 1;
             let colIndex = currentColumnIndex + colStep;
-            for (; colIndex >= 0 && !(vtable.rows[currentRowIndex].cells[colIndex] instanceof HTMLTableCellElement); colIndex += colStep) {}
+            for (;
+                    colIndex >= 0 &&
+                    colIndex < vtable.rows[currentRowIndex].cells.length &&
+                    !(vtable.rows[currentRowIndex].cells[colIndex] instanceof HTMLTableCellElement) &&
+                    (<VirtualTableCell>vtable.rows[currentRowIndex].cells[colIndex]).spanLeft;
+                colIndex += colStep) {}
             let leftTd = <HTMLTableCellElement>vtable.rows[currentRowIndex].cells[Math.min(colIndex, currentColumnIndex)];
             let rightTd = <HTMLTableCellElement>vtable.rows[currentRowIndex].cells[Math.max(colIndex, currentColumnIndex)];
 
-            if (leftTd instanceof HTMLTableCellElement && rightTd instanceof HTMLTableCellElement && rightTd.rowSpan == 1) {
+            if (leftTd instanceof HTMLTableCellElement && rightTd instanceof HTMLTableCellElement && leftTd.rowSpan == rightTd.rowSpan) {
                 while (rightTd.firstChild) {
                     leftTd.appendChild(rightTd.firstChild);
                 }
@@ -119,6 +129,43 @@ export default function editTable(
         case TableOperation.DeleteTable:
             vtable.rows = [];
             vtable.table = null;
+            return true;
+
+        case TableOperation.SplitVertically:
+            if (currentCell.rowSpan > 1) {
+                vtable.rows[currentRowIndex + 1].cells[currentColumnIndex] = currentCell.cloneNode(false /*deep*/) as HTMLTableCellElement;
+            } else {
+                let splitRow = <VirtualTableRow>{
+                    tr: currentRow.tr.cloneNode(false /*deep*/),
+                    cells: [],
+                };
+                for (let i = 0; i < currentRow.cells.length; i++) {
+                    let cell = currentRow.cells[i];
+                    splitRow.cells.push(i == currentColumnIndex ? currentCell.cloneNode(false /*deep*/) as HTMLTableCellElement : <VirtualTableCell>{
+                        spanAbove: true,
+                        spanLeft: cell instanceof HTMLTableCellElement ? false : (<VirtualTableCell>cell).spanLeft,
+                    });
+                }
+                vtable.rows.splice(currentRowIndex + 1, 0, splitRow);
+            }
+            return true;
+
+        case TableOperation.SplitHorizontally:
+            if (currentCell.colSpan > 1) {
+                currentRow.cells[currentColumnIndex + 1] = currentCell.cloneNode(false /*deep*/) as HTMLTableCellElement;
+            } else {
+                for (let i = 0; i < vtable.rows.length; i++) {
+                    let cell = vtable.rows[i].cells[currentColumnIndex];
+                    vtable.rows[i].cells.splice(
+                        currentColumnIndex + 1,
+                        0,
+                        i == currentRowIndex ? currentCell.cloneNode(false /*deep*/) as HTMLTableCellElement : <VirtualTableCell>{
+                            spanAbove: cell instanceof HTMLTableCellElement ? false : (<VirtualTableCell>cell).spanAbove,
+                            spanLeft: true,
+                        }
+                     );
+                }
+            }
             return true;
     }
 }
