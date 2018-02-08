@@ -1006,11 +1006,35 @@ declare namespace roosterjs {
      * if editor has focus, use selection.focusNode
      * if for some reason, the focus node does not get us a good node
      * fallback to the cached selection range if there is any
-     * and use the start container if selection is collapsed or commonAncestorContainer otherwise
+     * and use the start container if selection is collapsed or commonAncestorContainer otherwise.
+     * If an expectedTag is specified, the return value will be the nearest ancestor of current node
+     * which matches the tag name, or null if no match found in editor.
      * @param editor The editor instance
-     * @returns The node at cursor
+     * @param expectedTag The expected tag name. If null, return the element at cursor
+     * @param startNode If specified, use this node as start node to search instead of current node
+     * @returns The element at cursor or the nearest ancestor with the tag name is specified
      */
-    function getNodeAtCursor(editor: Editor): Node;
+    function getNodeAtCursor(editor: Editor, expectedTag?: string, startNode?: Node): Element;
+
+    /**
+     * @deprecated Use cacheGetNodeAtCursor instead
+     */
+    function cacheGetListElement(editor: Editor, event?: PluginEvent): Element;
+
+    /**
+     * Get the node at selection from event cache if it exists, otherwise get from DOM
+     * if editor has focus, use selection.focusNode
+     * if for some reason, the focus node does not get us a good node
+     * fallback to the cached selection range if there is any
+     * and use the start container if selection is collapsed or commonAncestorContainer otherwise.
+     * If an expectedTag is specified, the return value will be the nearest ancestor of current node
+     * which matches the tag name, or null if no match found in editor.
+     * @param editor The editor instance
+     * @param event Event object to get cached object from
+     * @param expectedTag The expected tag name. If null, return the element at cursor
+     * @returns The element at cursor or the nearest ancestor with the tag name is specified
+     */
+    function cacheGetNodeAtCursor(editor: Editor, event: PluginEvent, expectedTag: string): Element;
 
     /**
      * Query nodes intersected with current selection using a selector
@@ -1047,16 +1071,6 @@ declare namespace roosterjs {
      * @param cursorData
      */
     function replaceTextBeforeCursorWithNode(editor: Editor, text: string, node: Node, exactMatch: boolean, cursorData?: CursorData): boolean;
-
-    /**
-     * Get the list element at current selection
-     * A list element referes to the HTML <LI> element
-     * @param editor The editor instance
-     * @param event (Optional) The plugin event, it stores the event cached data for looking up.
-     * If not passed, we will crawl up the node at cursor until we find a list element
-     * @returns The list element, or null if no list element at current selection
-     */
-    function cacheGetListElement(editor: Editor, event?: PluginEvent): Element;
 
     /**
      * Get the list state at selection
@@ -1365,26 +1379,7 @@ declare namespace roosterjs {
      */
     function matchLink(url: string): LinkData;
 
-    function createVirtualTable(table: HTMLTableElement): VirtualTable;
-
-    function editTable(vtable: VirtualTable, currentCell: HTMLTableCellElement, operation: TableOperation): boolean;
-
-    function virtualTableToTable(vTable: VirtualTable): HTMLTableElement;
-
-    interface VirtualTable {
-        rows: VirtualTableRow[];
-        table: HTMLTableElement;
-    }
-
-    interface VirtualTableCell {
-        spanLeft: boolean;
-        spanAbove: boolean;
-    }
-
-    interface VirtualTableRow {
-        cells: (HTMLTableCellElement | VirtualTableCell)[];
-        tr: HTMLTableRowElement;
-    }
+    function editTable(editor: Editor, operation: TableOperation): void;
 
     class DefaultShortcut implements EditorPlugin {
         private editor;

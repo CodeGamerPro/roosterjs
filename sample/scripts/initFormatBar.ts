@@ -21,10 +21,7 @@ import {
     toggleBlockQuote,
     removeLink,
     toggleHeader,
-    createVirtualTable,
-    virtualTableToTable,
     editTable,
-    execFormatWithUndo,
 } from 'roosterjs-editor-api';
 import { Alignment, Indentation, TableOperation } from 'roosterjs-editor-types';
 import getCurrentEditor from './currentEditor';
@@ -96,22 +93,8 @@ export default function initFormatBar() {
         let intValue = parseInt(select.value);
         if (intValue >= 0) {
             let operation = <TableOperation>intValue;
-            let editor = getCurrentEditor();
-            let table = queryNodesWithSelection(editor, 'table')[0] as HTMLTableElement;
-            let td = queryNodesWithSelection(editor, 'td')[0] as HTMLTableCellElement;
-            if (table && td) {
-                let virtualTable = createVirtualTable(table);
-                execFormatWithUndo(editor, () => {
-                    if (editTable(virtualTable, td, operation)) {
-                        let newTable = virtualTableToTable(virtualTable);
-                        if (!newTable) {
-                            editor.deleteNode(table);
-                        }
-                    }
-                });
-            }
+            editTable(getCurrentEditor(), operation);
             select.value = '-1';
-            editor.focus();
         }
     });
 

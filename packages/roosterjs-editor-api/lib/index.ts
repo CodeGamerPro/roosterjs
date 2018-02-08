@@ -3,13 +3,12 @@ export {
     clearCursorEventDataCache,
 } from './cursor/cacheGetCursorEventData';
 export { default as CursorData } from './cursor/CursorData';
-export { default as getNodeAtCursor } from './cursor/getNodeAtCursor';
+export { default as getNodeAtCursor, cacheGetListElement, cacheGetNodeAtCursor } from './cursor/getNodeAtCursor';
 export { default as queryNodesWithSelection } from './cursor/queryNodesWithSelection';
 export { default as replaceRangeWithNode } from './cursor/replaceRangeWithNode';
 export {
     default as replaceTextBeforeCursorWithNode,
 } from './cursor/replaceTextBeforeCursorWithNode';
-export { default as cacheGetListElement } from './format/cacheGetListElement';
 export { default as cacheGetListState } from './format/cacheGetListState';
 export { default as clearFormat } from './format/clearFormat';
 export { default as createLink } from './format/createLink';
@@ -37,8 +36,4 @@ export { default as toggleSuperscript } from './format/toggleSuperscript';
 export { default as toggleUnderline } from './format/toggleUnderline';
 export { default as toggleHeader } from './format/toggleHeader';
 export { default as matchLink } from './linkMatch/matchLink';
-
-export { default as createVirtualTable } from './table/createVirtualTable';
 export { default as editTable } from './table/editTable';
-export { default as virtualTableToTable } from './table/virtualTableToTable';
-export { default as VirtualTable, VirtualTableCell, VirtualTableRow } from './table/VirtualTable';

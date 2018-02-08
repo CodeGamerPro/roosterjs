@@ -1,6 +1,6 @@
 import {
     setIndentation,
-    cacheGetListElement,
+    cacheGetNodeAtCursor,
     cacheGetListState,
     execFormatWithUndo,
     getNodeAtCursor,
@@ -71,7 +71,7 @@ export default class ContentEdit implements EditorPlugin {
                     keyboardEvent.preventDefault();
                 }
             } else {
-                let listElement = cacheGetListElement(this.editor, event);
+                let listElement = cacheGetNodeAtCursor(this.editor, event, 'LI');
                 if (listElement && this.shouldToggleState(event, listElement)) {
                     this.toggleList(event);
                 } else if (
@@ -98,7 +98,7 @@ export default class ContentEdit implements EditorPlugin {
         } else {
             let blockQuoteElement = this.getBlockQuoteElementFromEvent(event, keyboardEvent);
             if (blockQuoteElement) {
-                let node = getNodeAtCursor(this.editor);
+                let node: Node = getNodeAtCursor(this.editor);
                 if (node && node != blockQuoteElement) {
                     while (this.editor.contains(node) && node.parentNode != blockQuoteElement) {
                         node = node.parentNode;
