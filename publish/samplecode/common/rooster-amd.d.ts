@@ -134,7 +134,6 @@ export interface FormatState {
     canAddImageAltText?: boolean;
     canUndo?: boolean;
     canRedo?: boolean;
-    canEditTable?: boolean;
     headerLevel?: number;
 }
 

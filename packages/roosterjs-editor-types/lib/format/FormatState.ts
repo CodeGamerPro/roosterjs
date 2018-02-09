@@ -51,9 +51,6 @@ interface FormatState {
     // Whether the content can be redone
     canRedo?: boolean;
 
-    // Whether editTable API is available
-    canEditTable?: boolean;
-
     // Header level (0-6, 0 means no header)
     headerLevel?: number;
 }

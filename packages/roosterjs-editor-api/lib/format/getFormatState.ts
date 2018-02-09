@@ -77,7 +77,6 @@ export default function getFormatState(editor: Editor, event?: PluginEvent): For
         canAddImageAltText: queryNodesWithSelection(editor, 'img').length > 0,
         canUndo: editor.canUndo(),
         canRedo: editor.canRedo(),
-        canEditTable: !!getNodeAtCursor(editor, 'TABLE', nodeAtCursor),
         isBlockQuote: queryNodesWithSelection(editor, 'blockquote').length > 0,
         headerLevel: cacheGetHeaderLevel(editor, event),
     } : null;
