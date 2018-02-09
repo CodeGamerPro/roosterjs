@@ -163,10 +163,10 @@ export default class Paste implements EditorPlugin {
         while (leaf) {
             if (
                 leaf.nodeType == NodeType.Text &&
-                leaf.parentElement &&
-                parents.indexOf(leaf.parentElement) < 0
+                leaf.parentNode &&
+                parents.indexOf(<HTMLElement>leaf.parentNode) < 0
             ) {
-                parents.push(leaf.parentElement);
+                parents.push(<HTMLElement>leaf.parentNode);
             }
             leaf = getNextLeafSibling(node, leaf);
         }

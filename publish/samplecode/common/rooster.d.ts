@@ -135,6 +135,7 @@ declare namespace roosterjs {
         canAddImageAltText?: boolean;
         canUndo?: boolean;
         canRedo?: boolean;
+        canEditTable?: boolean;
         headerLevel?: number;
     }
 
@@ -627,6 +628,14 @@ declare namespace roosterjs {
     function wrap(node: Node, htmlFragment: string): Node;
 
     function wrapAll(nodes: Node[], htmlFragment?: string): Node;
+
+    /**
+     * Edit the given TABLE or TD node
+     * @param operation Operation to perform
+     * @param node The TABLE or TD node. If TABLE node is provided, it will use the first TD as current node
+     * @param param Optionial parameter, used by some operation type.
+     */
+    function editTableNode(operation: TableOperation, node: HTMLTableCellElement | HTMLTableElement, param?: any): HTMLTableCellElement;
 
     class Editor {
         private undoService;
@@ -1414,8 +1423,6 @@ declare namespace roosterjs {
      */
     function editTable(editor: Editor, operation: TableOperation): void;
 
-    function editTableWithParam(operation: TableOperation, table: HTMLTableElement, td?: HTMLTableCellElement, param?: any): HTMLTableCellElement;
-
     class DefaultShortcut implements EditorPlugin {
         private editor;
         initialize(editor: Editor): void;
@@ -1592,21 +1599,19 @@ declare namespace roosterjs {
     }
 
     class TableResize implements EditorPlugin {
+        private isRtl;
         private editor;
         private onMouseOverDisposer;
-        private moving;
-        private pageX;
-        private startLeft;
-        private left;
-        private top;
-        private height;
-        private table;
         private td;
+        private pageX;
+        private initialPageX;
+        constructor(isRtl?: boolean);
         initialize(editor: Editor): void;
         dispose(): void;
+        onPluginEvent(event: PluginEvent): void;
         private onMouseOver;
         private calcAndShowHandle();
-        private showHandle();
+        private adjustHandle(pageX);
         private getPosition(element);
         private getResizeHandle();
         private onMouseDown;

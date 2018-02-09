@@ -134,6 +134,7 @@ export interface FormatState {
     canAddImageAltText?: boolean;
     canUndo?: boolean;
     canRedo?: boolean;
+    canEditTable?: boolean;
     headerLevel?: number;
 }
 
@@ -626,6 +627,14 @@ export function unwrap(node: Node): Node;
 export function wrap(node: Node, htmlFragment: string): Node;
 
 export function wrapAll(nodes: Node[], htmlFragment?: string): Node;
+
+/**
+ * Edit the given TABLE or TD node
+ * @param operation Operation to perform
+ * @param node The TABLE or TD node. If TABLE node is provided, it will use the first TD as current node
+ * @param param Optionial parameter, used by some operation type.
+ */
+export function editTableNode(operation: TableOperation, node: HTMLTableCellElement | HTMLTableElement, param?: any): HTMLTableCellElement;
 
 export class Editor {
     private undoService;
@@ -1413,8 +1422,6 @@ export interface TableFormat {
  */
 export function editTable(editor: Editor, operation: TableOperation): void;
 
-export function editTableWithParam(operation: TableOperation, table: HTMLTableElement, td?: HTMLTableCellElement, param?: any): HTMLTableCellElement;
-
 export class DefaultShortcut implements EditorPlugin {
     private editor;
     initialize(editor: Editor): void;
@@ -1591,21 +1598,19 @@ export class Watermark implements EditorPlugin {
 }
 
 export class TableResize implements EditorPlugin {
+    private isRtl;
     private editor;
     private onMouseOverDisposer;
-    private moving;
-    private pageX;
-    private startLeft;
-    private left;
-    private top;
-    private height;
-    private table;
     private td;
+    private pageX;
+    private initialPageX;
+    constructor(isRtl?: boolean);
     initialize(editor: Editor): void;
     dispose(): void;
+    onPluginEvent(event: PluginEvent): void;
     private onMouseOver;
     private calcAndShowHandle();
-    private showHandle();
+    private adjustHandle(pageX);
     private getPosition(element);
     private getResizeHandle();
     private onMouseDown;

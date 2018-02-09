@@ -1,5 +1,5 @@
 import { Editor } from 'roosterjs-editor-core';
-import { editTableWithParam } from './editTable';
+import { editTableNode } from 'roosterjs-editor-dom';
 import execFormatWithUndo from '../format/execFormatWithUndo';
 import { TableOperation } from 'roosterjs-editor-types';
 
@@ -77,7 +77,7 @@ export default function insertTable(
     execFormatWithUndo(editor, () => {
         editor.insertNode(fragment);
         if (!format) {
-            editTableWithParam(TableOperation.StyleDefault, table);
+            editTableNode(TableOperation.StyleDefault, table);
         }
     });
 }

@@ -32,6 +32,7 @@ function initOptions() {
         'contentEditCheckbox',
         'watermarkCheckbox',
         'imageResizeCheckbox',
+        'tableResizeCheckbox',
         'boldCheckbox',
         'italicCheckbox',
         'underlineCheckbox',
@@ -67,9 +68,12 @@ export function initEditorForOptions() {
         plugins.push(new ImageResizePlugin());
     }
 
+    if ((document.getElementById('tableResizeCheckbox') as HTMLInputElement).checked) {
+        plugins.push(new TableResize());
+    }
+
     plugins.push(new ShowCursorPosition(document.getElementById('cursorPosition')));
     plugins.push(new ShowFromState(document.getElementById('formatState')));
-    plugins.push(new TableResize());
 
     let defaultFormat: DefaultFormat = {};
 

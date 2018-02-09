@@ -71,6 +71,9 @@ export default class ShowFormatState implements EditorPlugin {
             if (formatState.headerLevel > 0) {
                 result += ` <b>Header${formatState.headerLevel}</b>`;
             }
+            if (formatState.canEditTable) {
+                result += ' <b>CanEditTable</b>';
+            }
 
             this.resultContainer.innerHTML = result;
         }

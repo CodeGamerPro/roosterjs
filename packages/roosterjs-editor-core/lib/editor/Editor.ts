@@ -548,9 +548,9 @@ export default class Editor {
                 this.core.cachedSelectionRange = null;
             }),
             attachDomEvent(this.core, IS_IE_OR_EDGE ? 'beforedeactivate' : 'blur', null, () => {
-                if (!this.core.cachedSelectionRange) {
+//                if (!this.core.cachedSelectionRange) {
                     saveSelectionRange(this.core);
-                }
+//                }
             }),
         ];
     }

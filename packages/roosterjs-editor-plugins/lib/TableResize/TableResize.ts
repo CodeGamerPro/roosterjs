@@ -1,24 +1,21 @@
 import { Editor, EditorPlugin } from 'roosterjs-editor-core';
-import { fromHtml } from 'roosterjs-editor-dom';
-import { getNodeAtCursor, editTableWithParam } from 'roosterjs-editor-api';
-import { TableOperation } from 'roosterjs-editor-types';
+import { contains, fromHtml, editTableNode } from 'roosterjs-editor-dom';
+import { getNodeAtCursor } from 'roosterjs-editor-api';
+import { TableOperation, PluginEvent, PluginEventType, PluginDomEvent } from 'roosterjs-editor-types';
 
 const TABLE_RESIZE_HANDLE_KEY = 'TABLE_RESIZE_HANDLE';
-const CONTAINER_HTML = '<div style="position: absolute; cursor: col-resize; width: 6px; background-color: transparent; border: solid 0 #C6C6C6;"></div>';
+const HANDLE_WIDTH = 6;
+const CONTAINER_HTML =
+`<div style="position: absolute; cursor: col-resize; width: ${HANDLE_WIDTH}px; border: solid 0 #C6C6C6; background: red"></div>`;
 
 export default class TableResize implements EditorPlugin {
     private editor: Editor;
     private onMouseOverDisposer: () => void;
-    private moving: boolean;
-    private pageX: number;
-    private startLeft: number;
-    private left: number;
-    private top: number;
-    private height: number;
-    private table: HTMLTableElement;
     private td: HTMLTableCellElement;
+    private pageX = -1;
+    private initialPageX: number;
 
-    // constructor(private isRtl?: boolean) {}
+    constructor(private isRtl?: boolean) {}
 
     initialize(editor: Editor) {
         this.editor = editor;
@@ -27,46 +24,60 @@ export default class TableResize implements EditorPlugin {
 
     dispose() {
         this.editor = null;
-        if (this.onMouseOverDisposer) {
-            this.onMouseOverDisposer();
-            this.onMouseOverDisposer = null;
+        this.onMouseOverDisposer();
+    }
+
+    onPluginEvent(event: PluginEvent) {
+        if (
+            this.td && (
+            event.eventType == PluginEventType.KeyDown ||
+            event.eventType == PluginEventType.ContentChanged ||
+            (event.eventType == PluginEventType.MouseDown && !this.clickIntoCurrentTd(<PluginDomEvent>event))
+        )) {
+            this.td = null;
+            this.calcAndShowHandle();
         }
+    }
+
+    private clickIntoCurrentTd(event: PluginDomEvent) {
+        let mouseEvent = <MouseEvent>event.rawEvent;
+        let target = mouseEvent.target;
+        return target instanceof Node && (this.td == target || contains(this.td, <Node>target));
     }
 
     private onMouseOver = (e: MouseEvent) => {
         let node = <HTMLElement>e.srcElement;
-        if (!this.moving && node.tagName == 'TD') {
+        if (this.pageX < 0 && node && node.tagName == 'TD' && node != this.td) {
             this.td = <HTMLTableCellElement>node;
             this.calcAndShowHandle();
         }
     }
 
     private calcAndShowHandle() {
-        let tr = <HTMLTableRowElement>getNodeAtCursor(this.editor, 'TR', this.td);
-        this.table = <HTMLTableElement>getNodeAtCursor(this.editor, 'TABLE', tr);
-        if (tr && this.table) {
-            let width = 0;
-            for (let i = 0; i < tr.cells.length; i++) {
-                width += tr.cells[i].offsetWidth;
-                if (tr.cells[i] == this.td) {
-                    break;
-                }
-            }
+        if (this.td) {
+            let tr = <HTMLTableRowElement>getNodeAtCursor(this.editor, 'TR', this.td);
+            let table = <HTMLTableElement>getNodeAtCursor(this.editor, 'TABLE', tr);
+            if (tr && table) {
+                let width = 0;
+                let [left, top] = this.getPosition(table);
 
-            let [left, top] = this.getPosition(this.table);
-            this.startLeft = left + width - 6;
-            this.left = this.startLeft;
-            this.top = top;
-            this.height = this.table.offsetHeight;
-            this.showHandle();
+                left += this.td.offsetLeft + (this.isRtl ? 0 : this.td.offsetWidth - HANDLE_WIDTH);
+
+                let handle = this.getResizeHandle();
+                handle.style.display = '';
+                handle.style.top = top + 'px';
+                handle.style.height = table.offsetHeight + 'px';
+                handle.style.left = left + 'px';
+            }
+        } else {
+            this.getResizeHandle().style.display = 'none';
         }
     }
 
-    private showHandle() {
+    private adjustHandle(pageX: number) {
         let handle = this.getResizeHandle();
-        handle.style.left = this.left + 'px';
-        handle.style.top = this.top + 'px';
-        handle.style.height = this.height + 'px';
+        handle.style.left = (handle.offsetLeft + pageX - this.pageX) + 'px';
+        this.pageX = pageX;
     }
 
     private getPosition(element: HTMLElement): [number, number] {
@@ -89,8 +100,8 @@ export default class TableResize implements EditorPlugin {
     }
 
     private onMouseDown = (e: MouseEvent) => {
-        this.moving = true;
         this.pageX = e.pageX;
+        this.initialPageX = e.pageX;
         let document = this.editor.getDocument();
 
         document.addEventListener('mousemove', this.onMouseMove, true);
@@ -101,15 +112,12 @@ export default class TableResize implements EditorPlugin {
     }
 
     private onMouseMove = (e: MouseEvent) => {
-        this.left += e.pageX - this.pageX;
-        this.pageX = e.pageX;
-        this.showHandle();
+        this.adjustHandle(e.pageX);
         e.preventDefault();
         e.stopPropagation();
     }
 
-    private onMouseUp = () => {
-        this.moving = false;
+    private onMouseUp = (e: MouseEvent) => {
         let document = this.editor.getDocument();
         document.removeEventListener('mousemove', this.onMouseMove, true);
         document.removeEventListener('mouseup', this.onMouseUp, true);
@@ -117,7 +125,13 @@ export default class TableResize implements EditorPlugin {
         let handle = this.getResizeHandle();
         handle.style.borderWidth = '0';
 
-        editTableWithParam(TableOperation.SetColumnWidth, this.table, this.td, this.td.offsetWidth + this.left - this.startLeft);
+        let table = getNodeAtCursor(this.editor, 'TABLE', this.td) as HTMLTableElement;
+        let cellPadding = parseInt(table.cellPadding);
+        cellPadding = isNaN(cellPadding) ? 0 : cellPadding;
+        let newWidth = this.td.clientWidth - cellPadding * 2 + (e.pageX - this.initialPageX) * (this.isRtl ? -1 : 1);
+
+        editTableNode(TableOperation.SetColumnWidth, this.td, newWidth);
         this.calcAndShowHandle();
+        this.pageX = -1;
     }
 }
