@@ -1,6 +1,6 @@
 import { Editor, EditorPlugin } from 'roosterjs-editor-core';
 import { contains, fromHtml, editTableNode } from 'roosterjs-editor-dom';
-import { getNodeAtCursor } from 'roosterjs-editor-api';
+import { execFormatWithUndo, getNodeAtCursor } from 'roosterjs-editor-api';
 import { TableOperation, PluginEvent, PluginEventType, PluginDomEvent } from 'roosterjs-editor-types';
 
 const TABLE_RESIZE_HANDLE_KEY = 'TABLE_RESIZE_HANDLE';
@@ -78,10 +78,10 @@ export default class TableResize implements EditorPlugin {
         this.pageX = pageX;
     }
 
-    private getPosition(element: HTMLElement): [number, number] {
-        let parent = <HTMLElement>element.offsetParent;
+    private getPosition(e: HTMLElement): [number, number] {
+        let parent = <HTMLElement>e.offsetParent;
         let [left, top] = parent ? this.getPosition(parent) : [0, 0];
-        return [left + element.offsetLeft, top + element.offsetTop];
+        return [left + e.offsetLeft - e.scrollLeft, top + e.offsetTop - e.scrollTop];
     }
 
     private getResizeHandle() {
@@ -126,10 +126,14 @@ export default class TableResize implements EditorPlugin {
         let table = getNodeAtCursor(this.editor, 'TABLE', this.td) as HTMLTableElement;
         let cellPadding = parseInt(table.cellPadding);
         cellPadding = isNaN(cellPadding) ? 0 : cellPadding;
-        let newWidth = this.td.clientWidth - cellPadding * 2 + (e.pageX - this.initialPageX) * (this.isRtl ? -1 : 1);
 
-        editTableNode(TableOperation.SetColumnWidth, this.td, newWidth);
+        if (e.pageX != this.initialPageX) {
+            let newWidth = this.td.clientWidth - cellPadding * 2 + (e.pageX - this.initialPageX) * (this.isRtl ? -1 : 1);
+            execFormatWithUndo(this.editor, () => editTableNode(TableOperation.SetColumnWidth, this.td, newWidth));
+        }
+
         this.calcAndShowHandle();
         this.pageX = -1;
+        this.editor.focus();
     }
 }

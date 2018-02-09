@@ -996,6 +996,7 @@ export class CursorData {
     private backwardTraversingComplete;
     private forwardTraversingComplete;
     private inlineElementsBeforeCursor;
+    private firstNonTextInlineBeforeCursor;
     /**
      * Create a new CursorData instance
      * @param editor The editor instance
@@ -1033,6 +1034,11 @@ export class CursorData {
      * @param stopFunc The callback stop function
      */
     getTextSectionBeforeCursorTill(stopFunc: (textInlineElement: InlineElement) => boolean): void;
+    /**
+     * Get first non textual inline element before cursor
+     * @returns First non textutal inline element before cursor or null if no such element exists
+     */
+    getFirstNonTextInlineBeforeCursor(): InlineElement;
     private continueTraversingBackwardTill(stopFunc);
 }
 
@@ -1106,6 +1112,16 @@ export function replaceRangeWithNode(editor: Editor, range: Range, node: Node, e
  * @param cursorData
  */
 export function replaceTextBeforeCursorWithNode(editor: Editor, text: string, node: Node, exactMatch: boolean, cursorData?: CursorData): boolean;
+
+/**
+ * Validate the text matches what's before the cursor, and return the range for it
+ * @param editor The editor instance
+ * @param text The text to match against
+ * @param exactMatch Whether it is an exact match
+ * @param cursorData The cursor data
+ * @returns The range for the matched text, null if unable to find a match
+ */
+export function validateAndGetRangeForTextBeforeCursor(editor: Editor, text: string, exactMatch: boolean, cursorData: CursorData): Range;
 
 /**
  * Get the list state at selection
@@ -1564,6 +1580,11 @@ export interface ContentEditFeatures {
      * @default true
      */
     unquoteWhenEnterOnEmptyLine: boolean;
+    /**
+     * When press space after an asterik or number in an empty line, toggle bullet/numbering
+     * @default true
+     */
+    autoBullet: boolean;
 }
 
 /**
@@ -1611,7 +1632,7 @@ export class TableResize implements EditorPlugin {
     private onMouseOver;
     private calcAndShowHandle();
     private adjustHandle(pageX);
-    private getPosition(element);
+    private getPosition(e);
     private getResizeHandle();
     private onMouseDown;
     private onMouseMove;

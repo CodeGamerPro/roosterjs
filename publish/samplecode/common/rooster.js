@@ -299,6 +299,7 @@ var replaceRangeWithNode_1 = __webpack_require__(43);
 exports.replaceRangeWithNode = replaceRangeWithNode_1.default;
 var replaceTextBeforeCursorWithNode_1 = __webpack_require__(84);
 exports.replaceTextBeforeCursorWithNode = replaceTextBeforeCursorWithNode_1.default;
+exports.validateAndGetRangeForTextBeforeCursor = replaceTextBeforeCursorWithNode_1.validateAndGetRangeForTextBeforeCursor;
 var cacheGetListState_1 = __webpack_require__(44);
 exports.cacheGetListState = cacheGetListState_1.default;
 var clearFormat_1 = __webpack_require__(85);
@@ -2226,6 +2227,18 @@ var CursorData = /** @class */ (function () {
             this.continueTraversingBackwardTill(stopFunc);
         }
     };
+    /**
+     * Get first non textual inline element before cursor
+     * @returns First non textutal inline element before cursor or null if no such element exists
+     */
+    CursorData.prototype.getFirstNonTextInlineBeforeCursor = function () {
+        if (!this.firstNonTextInlineBeforeCursor && !this.backwardTraversingComplete) {
+            this.continueTraversingBackwardTill(function () {
+                return false;
+            });
+        }
+        return this.firstNonTextInlineBeforeCursor;
+    };
     /// Continue traversing backward till stop condition is met or begin of block is reached
     CursorData.prototype.continueTraversingBackwardTill = function (stopFunc) {
         if (!this.backwardTraverser) {
@@ -2277,6 +2290,7 @@ var CursorData = /** @class */ (function () {
                     // Make sure to set inlineBeforeCursor if it is not set
                     this.inlineBeforeCursor = previousInline;
                 }
+                this.firstNonTextInlineBeforeCursor = previousInline;
                 this.backwardTraversingComplete = true;
                 if (!this.cachedWordBeforeCursor) {
                     // if parsing is done, whatever we get so far in this.cachedText should also be in this.cachedWordBeforeCursor
@@ -2308,13 +2322,13 @@ var HyperLink_1 = __webpack_require__(105);
 exports.HyperLink = HyperLink_1.default;
 var ContentEdit_1 = __webpack_require__(106);
 exports.ContentEdit = ContentEdit_1.default;
-var Paste_1 = __webpack_require__(107);
+var Paste_1 = __webpack_require__(108);
 exports.Paste = Paste_1.default;
 var ContentEditFeatures_1 = __webpack_require__(52);
 exports.getDefaultContentEditFeatures = ContentEditFeatures_1.getDefaultContentEditFeatures;
-var Watermark_1 = __webpack_require__(115);
+var Watermark_1 = __webpack_require__(116);
 exports.Watermark = Watermark_1.default;
-var TableResize_1 = __webpack_require__(116);
+var TableResize_1 = __webpack_require__(117);
 exports.TableResize = TableResize_1.default;
 
 
@@ -3287,7 +3301,6 @@ function getFormatState(editor, event) {
         canAddImageAltText: queryNodesWithSelection_1.default(editor, 'img').length > 0,
         canUndo: editor.canUndo(),
         canRedo: editor.canRedo(),
-        canEditTable: !!getNodeAtCursor_1.default(editor, 'TABLE', nodeAtCursor),
         isBlockQuote: queryNodesWithSelection_1.default(editor, 'blockquote').length > 0,
         headerLevel: cacheGetHeaderLevel_1.default(editor, event),
     } : null;
@@ -3373,6 +3386,7 @@ function getDefaultContentEditFeatures() {
         mergeInNewLineWhenBackspaceOnFirstChar: false,
         unquoteWhenBackspaceOnEmptyFirstLine: true,
         unquoteWhenEnterOnEmptyLine: true,
+        autoBullet: true,
     };
 }
 exports.getDefaultContentEditFeatures = getDefaultContentEditFeatures;
@@ -3469,12 +3483,12 @@ function __export(m) {
 Object.defineProperty(exports, "__esModule", { value: true });
 var createEditor_1 = __webpack_require__(56);
 exports.createEditor = createEditor_1.default;
-__export(__webpack_require__(117));
+__export(__webpack_require__(118));
 __export(__webpack_require__(0));
 __export(__webpack_require__(2));
 __export(__webpack_require__(4));
 __export(__webpack_require__(29));
-__export(__webpack_require__(118));
+__export(__webpack_require__(119));
 
 
 /***/ }),
@@ -5876,7 +5890,14 @@ exports.clearCursorEventDataCache = clearCursorEventDataCache;
 Object.defineProperty(exports, "__esModule", { value: true });
 var CursorData_1 = __webpack_require__(28);
 var replaceRangeWithNode_1 = __webpack_require__(43);
-/// Validate the text matches what's before the cursor, and return the range for it
+/**
+ * Validate the text matches what's before the cursor, and return the range for it
+ * @param editor The editor instance
+ * @param text The text to match against
+ * @param exactMatch Whether it is an exact match
+ * @param cursorData The cursor data
+ * @returns The range for the matched text, null if unable to find a match
+ */
 function validateAndGetRangeForTextBeforeCursor(editor, text, exactMatch, cursorData) {
     if (!text || text.length == 0) {
         return;
@@ -5942,6 +5963,7 @@ function validateAndGetRangeForTextBeforeCursor(editor, text, exactMatch, cursor
     // textIndex == -1 means a successful complete match
     return textIndex == -1 ? range : null;
 }
+exports.validateAndGetRangeForTextBeforeCursor = validateAndGetRangeForTextBeforeCursor;
 /**
  * Replace text before cursor with a node
  * @param editor The editor instance
@@ -7040,6 +7062,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 var roosterjs_editor_api_1 = __webpack_require__(4);
 var roosterjs_editor_dom_1 = __webpack_require__(0);
 var ContentEditFeatures_1 = __webpack_require__(52);
+var autoBullet_1 = __webpack_require__(107);
 var KEY_TAB = 9;
 var KEY_BACKSPACE = 8;
 var KEY_ENTER = 13;
@@ -7074,6 +7097,7 @@ var ContentEdit = /** @class */ (function () {
     ContentEdit.prototype.onPluginEvent = function (event) {
         var _this = this;
         var keyboardEvent = event.rawEvent;
+        var blockQuoteElement = null;
         if (this.isListEvent(event, [KEY_TAB, KEY_BACKSPACE, KEY_ENTER])) {
             // Tab: increase indent
             // Shift+ Tab: decrease indent
@@ -7113,31 +7137,31 @@ var ContentEdit = /** @class */ (function () {
                 }
             }
         }
-        else {
-            var blockQuoteElement_1 = this.getBlockQuoteElementFromEvent(event, keyboardEvent);
-            if (blockQuoteElement_1) {
-                var node_1 = roosterjs_editor_api_1.getNodeAtCursor(this.editor);
-                if (node_1 && node_1 != blockQuoteElement_1) {
-                    while (this.editor.contains(node_1) && node_1.parentNode != blockQuoteElement_1) {
-                        node_1 = node_1.parentNode;
-                    }
-                    if (node_1.parentNode == blockQuoteElement_1 &&
-                        this.shouldToggleState(event, node_1)) {
-                        keyboardEvent.preventDefault();
-                        roosterjs_editor_api_1.execFormatWithUndo(this.editor, function () {
-                            roosterjs_editor_dom_1.splitParentNode(node_1, false /*splitBefore*/);
-                            blockQuoteElement_1.parentNode.insertBefore(node_1, blockQuoteElement_1.nextSibling);
-                            if (!blockQuoteElement_1.firstChild) {
-                                blockQuoteElement_1.parentNode.removeChild(blockQuoteElement_1);
-                            }
-                            var range = _this.editor.getSelectionRange();
-                            range.selectNode(node_1);
-                            range.collapse(true /*toStart*/);
-                            _this.editor.updateSelection(range);
-                        });
-                    }
+        else if (blockQuoteElement = this.getBlockQuoteElementFromEvent(event, keyboardEvent)) {
+            var node_1 = roosterjs_editor_api_1.getNodeAtCursor(this.editor);
+            if (node_1 && node_1 != blockQuoteElement) {
+                while (this.editor.contains(node_1) && node_1.parentNode != blockQuoteElement) {
+                    node_1 = node_1.parentNode;
+                }
+                if (node_1.parentNode == blockQuoteElement &&
+                    this.shouldToggleState(event, node_1)) {
+                    keyboardEvent.preventDefault();
+                    roosterjs_editor_api_1.execFormatWithUndo(this.editor, function () {
+                        roosterjs_editor_dom_1.splitParentNode(node_1, false /*splitBefore*/);
+                        blockQuoteElement.parentNode.insertBefore(node_1, blockQuoteElement.nextSibling);
+                        if (!blockQuoteElement.firstChild) {
+                            blockQuoteElement.parentNode.removeChild(blockQuoteElement);
+                        }
+                        var range = _this.editor.getSelectionRange();
+                        range.selectNode(node_1);
+                        range.collapse(true /*toStart*/);
+                        _this.editor.updateSelection(range);
+                    });
                 }
             }
+        }
+        else if (this.features.autoBullet && autoBullet_1.default(this.editor, event, keyboardEvent)) {
+            keyboardEvent.preventDefault();
         }
     };
     // Check if it is a tab or shift+tab / Enter / Backspace event
@@ -7233,13 +7257,91 @@ exports.default = ContentEdit;
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
+var roosterjs_editor_api_1 = __webpack_require__(4);
+var roosterjs_editor_core_1 = __webpack_require__(2);
+var KEY_SPACE = 32;
+/**
+ * Handles the autoBullet event. Specifically, when user press space after input '*' and '1.' in an empty line,
+ * we automatically convert it to an html list
+ * @param editor The editor instance
+ * @param event The plugin event
+ * @param keyboardEvent The keyboar event
+ * @returns True if it is an autoBullet event, false otherwise
+ */
+function tryHandleAutoBullet(editor, event, keyboardEvent) {
+    if (event.eventType == 0 /* KeyDown */) {
+        if ((keyboardEvent.which == KEY_SPACE) &&
+            !keyboardEvent.ctrlKey &&
+            !keyboardEvent.altKey &&
+            !keyboardEvent.metaKey) {
+            var cursorData = roosterjs_editor_api_1.cacheGetCursorEventData(event, editor);
+            // We pick 3 characters before cursor so that if any characters exist before "1." or "*",
+            // we do not fire auto list.
+            var textBeforeCursor = cursorData.getXCharsBeforeCursor(3);
+            // Auto list is triggered if:
+            // 1. Text before cursor exactly mathces '*' or '1.'
+            // 2. Cursor is not in html list
+            // 3. There's no non-text inline entities before cursor
+            if ((textBeforeCursor == '*' || textBeforeCursor == '1.') && roosterjs_editor_api_1.cacheGetListState(editor, event) == 0 /* None */ && !cursorData.getFirstNonTextInlineBeforeCursor()) {
+                handleAutoBulletOrNumbering(textBeforeCursor, editor);
+                return true;
+            }
+        }
+    }
+    return false;
+}
+exports.default = tryHandleAutoBullet;
+function handleAutoBulletOrNumbering(identifier, editor) {
+    var document = editor.getDocument();
+    var spaceNode = document.createTextNode(' ');
+    editor.insertNode(spaceNode, {
+        position: 2 /* SelectionStart */,
+        updateCursor: true,
+        replaceSelection: false,
+        insertOnNewLine: false,
+    });
+    editor.addUndoSnapshot();
+    editor.runWithoutAddingUndoSnapshot(function () {
+        // Remove the user input '*' or '1.'
+        var rangeToDelete = roosterjs_editor_api_1.validateAndGetRangeForTextBeforeCursor(editor, identifier + ' ', true, new roosterjs_editor_api_1.CursorData(editor));
+        if (rangeToDelete) {
+            rangeToDelete.deleteContents();
+        }
+        // If not explicitly insert br, Chrome will operate on the previous line
+        if (roosterjs_editor_core_1.browserData.isChrome) {
+            var brNode = document.createElement('br');
+            editor.insertNode(brNode, {
+                position: 2 /* SelectionStart */,
+                updateCursor: true,
+                replaceSelection: false,
+                insertOnNewLine: false,
+            });
+        }
+        if (identifier == '*') {
+            roosterjs_editor_api_1.toggleBullet(editor);
+        }
+        else if (identifier == '1.') {
+            roosterjs_editor_api_1.toggleNumbering(editor);
+        }
+    });
+    editor.addUndoSnapshot();
+}
+
+
+/***/ }),
+/* 108 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
 var roosterjs_editor_dom_1 = __webpack_require__(0);
 var roosterjs_editor_core_1 = __webpack_require__(2);
 var roosterjs_editor_api_1 = __webpack_require__(4);
-var buildClipboardData_1 = __webpack_require__(108);
-var convertPastedContentFromWord_1 = __webpack_require__(109);
-var removeUnsafeTags_1 = __webpack_require__(113);
-var removeUselessCss_1 = __webpack_require__(114);
+var buildClipboardData_1 = __webpack_require__(109);
+var convertPastedContentFromWord_1 = __webpack_require__(110);
+var removeUnsafeTags_1 = __webpack_require__(114);
+var removeUselessCss_1 = __webpack_require__(115);
 /**
  * Paste plugin, handles onPaste event and paste content into editor
  */
@@ -7381,7 +7483,7 @@ exports.default = Paste;
 
 
 /***/ }),
-/* 108 */
+/* 109 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -7512,15 +7614,15 @@ function normalizeContent(content) {
 
 
 /***/ }),
-/* 109 */
+/* 110 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
-var wordConverter_1 = __webpack_require__(110);
-var WordConverterArguments_1 = __webpack_require__(111);
-var converterUtils_1 = __webpack_require__(112);
+var wordConverter_1 = __webpack_require__(111);
+var WordConverterArguments_1 = __webpack_require__(112);
+var converterUtils_1 = __webpack_require__(113);
 /** Converts all the Word generated list items in the specified node into standard HTML UL and OL tags */
 function convertPastedContentFromWord(root) {
     var wordConverter = wordConverter_1.createWordConverter();
@@ -7541,7 +7643,7 @@ exports.default = convertPastedContentFromWord;
 
 
 /***/ }),
-/* 110 */
+/* 111 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -7563,7 +7665,7 @@ exports.createWordConverter = createWordConverter;
 
 
 /***/ }),
-/* 111 */
+/* 112 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -7586,7 +7688,7 @@ exports.createWordConverterArguments = createWordConverterArguments;
 
 
 /***/ }),
-/* 112 */
+/* 113 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -8073,7 +8175,7 @@ function resetCurrentLists(args) {
 
 
 /***/ }),
-/* 113 */
+/* 114 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -8112,7 +8214,7 @@ exports.default = removeUnsafeTags;
 
 
 /***/ }),
-/* 114 */
+/* 115 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -8205,7 +8307,7 @@ exports.default = removeUselessCss;
 
 
 /***/ }),
-/* 115 */
+/* 116 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -8301,7 +8403,7 @@ exports.default = Watermark;
 
 
 /***/ }),
-/* 116 */
+/* 117 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -8347,10 +8449,13 @@ var TableResize = /** @class */ (function () {
             var table = roosterjs_editor_api_1.getNodeAtCursor(_this.editor, 'TABLE', _this.td);
             var cellPadding = parseInt(table.cellPadding);
             cellPadding = isNaN(cellPadding) ? 0 : cellPadding;
-            var newWidth = _this.td.clientWidth - cellPadding * 2 + (e.pageX - _this.initialPageX) * (_this.isRtl ? -1 : 1);
-            roosterjs_editor_dom_1.editTableNode(19 /* SetColumnWidth */, _this.td, newWidth);
+            if (e.pageX != _this.initialPageX) {
+                var newWidth_1 = _this.td.clientWidth - cellPadding * 2 + (e.pageX - _this.initialPageX) * (_this.isRtl ? -1 : 1);
+                roosterjs_editor_api_1.execFormatWithUndo(_this.editor, function () { return roosterjs_editor_dom_1.editTableNode(19 /* SetColumnWidth */, _this.td, newWidth_1); });
+            }
             _this.calcAndShowHandle();
             _this.pageX = -1;
+            _this.editor.focus();
         };
     }
     TableResize.prototype.initialize = function (editor) {
@@ -8397,10 +8502,10 @@ var TableResize = /** @class */ (function () {
         handle.style.left = (handle.offsetLeft + pageX - this.pageX) + 'px';
         this.pageX = pageX;
     };
-    TableResize.prototype.getPosition = function (element) {
-        var parent = element.offsetParent;
+    TableResize.prototype.getPosition = function (e) {
+        var parent = e.offsetParent;
         var _a = parent ? this.getPosition(parent) : [0, 0], left = _a[0], top = _a[1];
-        return [left + element.offsetLeft, top + element.offsetTop];
+        return [left + e.offsetLeft - e.scrollLeft, top + e.offsetTop - e.scrollTop];
     };
     TableResize.prototype.getResizeHandle = function () {
         var _this = this;
@@ -8421,27 +8526,27 @@ exports.default = TableResize;
 
 
 /***/ }),
-/* 117 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", { value: true });
-
-
-/***/ }),
 /* 118 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
-var ImageResizePlugin_1 = __webpack_require__(119);
-exports.ImageResizePlugin = ImageResizePlugin_1.default;
 
 
 /***/ }),
 /* 119 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+var ImageResizePlugin_1 = __webpack_require__(120);
+exports.ImageResizePlugin = ImageResizePlugin_1.default;
+
+
+/***/ }),
+/* 120 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
