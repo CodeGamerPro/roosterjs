@@ -7,6 +7,7 @@ import {
     Paste,
     ContentEdit,
     Watermark,
+    TableResize,
 } from 'roosterjs-editor-plugins';
 import { ImageResizePlugin } from 'roosterjs-plugin-image-resize';
 import { Editor, EditorPlugin, EditorOptions } from 'roosterjs-editor-core';
@@ -68,6 +69,7 @@ export function initEditorForOptions() {
 
     plugins.push(new ShowCursorPosition(document.getElementById('cursorPosition')));
     plugins.push(new ShowFromState(document.getElementById('formatState')));
+    plugins.push(new TableResize());
 
     let defaultFormat: DefaultFormat = {};
 

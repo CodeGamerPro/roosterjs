@@ -12,21 +12,25 @@ export default function editTable(editor: Editor, operation: TableOperation) {
     let td = getNodeAtCursor(editor, 'TD') as HTMLTableCellElement;
     let table = getNodeAtCursor(editor, 'TABLE', td) as HTMLTableElement;
     if (table && td) {
-        let virtualTable = createVirtualTable(table, td);
         execFormatWithUndo(editor, () => {
-            if (internalEditTable(virtualTable, operation)) {
-                let resultTable = writeBack(virtualTable);
-                if (!resultTable) {
-                    editor.deleteNode(table);
-                    td = null;
-                } else {
-                    td = editor.contains(td) ? td : getCurrentTd(virtualTable);
-                }
-            }
-            return td;
+            let fallbackTd = editTableWithParam(operation, table, td);
+            td = editor.contains(td) ? td : fallbackTd;
+            editor.focus();
         }, true /*preserveSelection*/);
     }
-    editor.focus();
+}
+
+export function editTableWithParam(operation: TableOperation, table: HTMLTableElement, td?: HTMLTableCellElement, param?: any): HTMLTableCellElement {
+    if (table && table.rows.length > 0) {
+        td = td || table.rows[0].cells[0];
+        if (td) {
+            let virtualTable = createVirtualTable(table, td);
+            internalEditTable(virtualTable, operation, param);
+            writeBack(virtualTable);
+            return getCurrentTd(virtualTable);
+        }
+    }
+    return null;
 }
 
 interface VirtualTableCell {
@@ -40,12 +44,32 @@ interface VirtualTableRow {
     tr: HTMLTableRowElement;
 }
 
+interface VirtualTableStyle {
+    className: string;
+    bgColorEven: string;
+    bgColorOdd: string;
+    topBorder: string;
+    bottomBorder: string;
+    verticalBorder: string;
+}
+
 interface VirtualTable {
     rows: VirtualTableRow[];
     table: HTMLTableElement;
+    style: VirtualTableStyle;
     row: number;
     col: number;
 }
+
+const TABLE_STYLE_CLASS_PREFIX = 'roosterTableStyle';
+const TABLE_STYLE_CLASS_MAP: { [name: string]: VirtualTableStyle } = {
+    Default: createStyle('Default', '#FFF', '#FFF', '#ABABAB', '#ABABAB', '#ABABAB'),
+    LightLines: createStyle('LightLines', '#FFF', '#FFF', null, '#92C0E0'),
+    TwoTones: createStyle('TwoTones', '#C0E4FF', '#FFF'),
+    LightBands: createStyle('LightBands', '#D8D8D8', '#FFF'),
+    Grid: createStyle('Grid', '#D8D8D8', '#FFF', '#ABABAB', '#ABABAB', '#ABABAB'),
+    Clear: createStyle('Clear', '#FFF', '#FFF'),
+};
 
 // Create virtual table from HTML table
 function createVirtualTable(table: HTMLTableElement, currentTd: HTMLTableCellElement): VirtualTable {
@@ -53,16 +77,14 @@ function createVirtualTable(table: HTMLTableElement, currentTd: HTMLTableCellEle
     let vtable = {
         table: table,
         rows: <VirtualTableRow[]>[],
+        style: getTableStyle(table),
         row: 0,
         col: 0,
     };
 
     // 2. Create empty rows
     for (let row = 0; row < table.rows.length; row++) {
-        vtable.rows.push({
-            cells: <VirtualTableCell[]>[],
-            tr: table.rows[row],
-        });
+        vtable.rows.push(createRow(table.rows[row]));
     }
 
     // 3. Fill the cells to each row
@@ -93,34 +115,24 @@ function createVirtualTable(table: HTMLTableElement, currentTd: HTMLTableCellEle
     return vtable;
 }
 
-function internalEditTable(
-    vtable: VirtualTable,
-    operation: TableOperation
-): boolean {
+function internalEditTable(vtable: VirtualTable, operation: TableOperation, param: any) {
     let currentRow = vtable.rows[vtable.row];
     let currentCell = currentRow.cells[vtable.col];
     switch (operation) {
         case TableOperation.InsertAbove:
         case TableOperation.InsertBelow:
-            let newRow: VirtualTableRow = {
-                cells: [],
-                tr: cloneNode(currentRow.tr),
-            };
-
-            for (let cell of currentRow.cells) {
-                newRow.cells.push(cloneCell(cell));
-            }
-
+            let newRow = createRow(cloneNode(currentRow.tr), currentRow.cells.map(cell => cloneCell(cell)));
             vtable.rows.splice(vtable.row + (operation == TableOperation.InsertAbove ? 0 : 1), 0, newRow);
-            return true;
+            break;
 
         case TableOperation.InsertLeft:
         case TableOperation.InsertRight:
+            let newCol = vtable.col + (operation == TableOperation.InsertLeft ? 0 : 1);
             for (let i = 0; i < vtable.rows.length; i++) {
                 let cell = getCell(vtable, i, vtable.col);
-                vtable.rows[i].cells.splice(vtable.col + (operation == TableOperation.InsertLeft ? 0 : 1), 0, cloneCell(cell));
+                vtable.rows[i].cells.splice(newCol, 0, cloneCell(cell));
             }
-            return true;
+            break;
 
         case TableOperation.DeleteRow:
             for (let i = 0; i < currentRow.cells.length; i++) {
@@ -131,7 +143,7 @@ function internalEditTable(
                 }
             }
             vtable.rows.splice(vtable.col, 1);
-            return true;
+            break;
 
         case TableOperation.DeleteColumn:
             for (let i = 0; i < vtable.rows.length; i++) {
@@ -142,7 +154,7 @@ function internalEditTable(
                 }
                 vtable.rows[i].cells.splice(vtable.col, 1);
             }
-            return true;
+            break;
 
         case TableOperation.MergeAbove:
         case TableOperation.MergeBelow:
@@ -156,18 +168,17 @@ function internalEditTable(
                 if (cell.td && !cell.spanAbove) {
                     let aboveCell = rowIndex < vtable.row ? cell : currentCell;
                     let belowCell = rowIndex < vtable.row ? currentCell : cell;
-                    if (aboveCell.td.colSpan != belowCell.td.colSpan) {
-                        return false;
+                    if (aboveCell.td.colSpan == belowCell.td.colSpan) {
+                        moveChild(aboveCell.td, belowCell.td);
+                        belowCell.td = null;
+                        belowCell.spanAbove = true;
                     }
-                    moveChild(aboveCell.td, belowCell.td);
-                    belowCell.td = null;
-                    belowCell.spanAbove = true;
-                    return true;
+                    break;
                 }
             }
-            return false;
+            break;
 
-            case TableOperation.MergeLeft:
+        case TableOperation.MergeLeft:
         case TableOperation.MergeRight:
             let colStep = operation == TableOperation.MergeLeft ? -1 : 1;
             for (
@@ -179,41 +190,34 @@ function internalEditTable(
                 if (cell.td && !cell.spanLeft) {
                     let leftCell = colIndex < vtable.col ? cell : currentCell;
                     let rightCell = colIndex < vtable.col ? currentCell : cell;
-                    if (leftCell.td.rowSpan != rightCell.td.rowSpan) {
-                        return false;
+                    if (leftCell.td.rowSpan == rightCell.td.rowSpan) {
+                        moveChild(leftCell.td, rightCell.td);
+                        rightCell.td = null;
+                        rightCell.spanLeft = true;
                     }
-                    moveChild(leftCell.td, rightCell.td);
-                    rightCell.td = null;
-                    rightCell.spanLeft = true;
-                    return true;
+                    break;
                 }
             }
-            return true;
+            break;
 
         case TableOperation.DeleteTable:
-            vtable.rows = [];
-            vtable.table = null;
-            return true;
+            vtable.rows = null;
+            break;
 
         case TableOperation.SplitVertically:
             if (currentCell.td.rowSpan > 1) {
                 getCell(vtable, vtable.row + 1, vtable.col).td = cloneNode(currentCell.td);
             } else {
-                let splitRow = <VirtualTableRow>{
-                    tr: cloneNode(currentRow.tr),
-                    cells: [],
-                };
-                for (let i = 0; i < currentRow.cells.length; i++) {
-                    let cell = currentRow.cells[i];
-                    splitRow.cells.push({
-                        td: i == vtable.col ? cloneNode(cell.td) : null,
-                        spanAbove: i != vtable.col,
+                let splitRow = createRow(cloneNode(currentRow.tr), currentRow.cells.map(cell => {
+                    return {
+                        td: cell == currentCell ? cloneNode(cell.td) : null,
+                        spanAbove: cell != currentCell,
                         spanLeft: cell.spanLeft,
-                    });
-                }
+                    };
+                }));
                 vtable.rows.splice(vtable.row + 1, 0, splitRow);
             }
-            return true;
+            break;
 
         case TableOperation.SplitHorizontally:
             if (currentCell.td.colSpan > 1) {
@@ -232,37 +236,122 @@ function internalEditTable(
                     );
                 }
             }
-            return true;
+            break;
+
+        case TableOperation.StyleDefault:
+            vtable.style = TABLE_STYLE_CLASS_MAP.Default;
+            break;
+
+        case TableOperation.StyleGrid:
+            vtable.style = TABLE_STYLE_CLASS_MAP.Grid;
+            break;
+
+        case TableOperation.StyleLightLines:
+            vtable.style = TABLE_STYLE_CLASS_MAP.LightLines;
+            break;
+
+        case TableOperation.StyleTwoTones:
+            vtable.style = TABLE_STYLE_CLASS_MAP.TwoTones;
+            break;
+
+        case TableOperation.StyleLightBands:
+            vtable.style = TABLE_STYLE_CLASS_MAP.LightBands;
+            break;
+
+        case TableOperation.StyleClear:
+            vtable.style = TABLE_STYLE_CLASS_MAP.Clear;
+            break;
+
+        case TableOperation.SetColumnWidth:
+            let width = parseInt(param);
+            if (!(width >= 0)) {
+                width = 0;
+            }
+            for (let row = 0; row < vtable.rows.length; row++) {
+                let cell = getCell(vtable, row, vtable.col);
+                if (cell.td) {
+                    cell.td.style.width = width + 'px';
+                }
+            }
+            break;
     }
 }
 
-function writeBack(vTable: VirtualTable): HTMLTableElement {
-    let table = vTable.table;
-    if (table) {
+function writeBack(vtable: VirtualTable) {
+    let table = vtable.table;
+
+    if (vtable.rows) {
         removeChildren(table);
-        for (let r = 0; r < vTable.rows.length; r++) {
-            let row = vTable.rows[r];
+        let existingStyle = getTableStyle(table);
+        let newStyle = vtable.style;
+        if (newStyle) {
+            if (existingStyle) {
+                table.className = table.className.replace(existingStyle.className, newStyle.className);
+            } else {
+                table.className += ' ' + newStyle.className;
+            }
+            table.style.borderCollapse = 'collapse';
+        }
+        for (let r = 0; r < vtable.rows.length; r++) {
+            let row = vtable.rows[r];
             let tr = row.tr;
+
             removeChildren(tr);
+            if (newStyle) {
+                tr.style.backgroundColor = (( r % 2) ? newStyle.bgColorEven : newStyle.bgColorOdd) || 'transparent';
+            }
             table.appendChild(tr);
             for (let c = 0; c < row.cells.length; c++) {
                 let td = row.cells[c].td;
                 if (td) {
-                    recalcSpans(td, vTable, r, c);
+                    if (newStyle) {
+                        td.style.borderTop = getBorderStyle(newStyle.topBorder);
+                        td.style.borderBottom = getBorderStyle(newStyle.bottomBorder);
+                        td.style.borderLeft = getBorderStyle(newStyle.verticalBorder);
+                        td.style.borderRight = getBorderStyle(newStyle.verticalBorder);
+                    }
+                    recalcSpans(td, vtable, r, c);
                     tr.appendChild(td);
                 }
             }
         }
+    } else {
+        table.parentNode.removeChild(table);
     }
+}
 
-    return table;
+function getBorderStyle(style: string): string {
+    return 'solid 1px ' + (style || 'transparent');
+}
+
+function getTableStyle(table: HTMLTableElement): VirtualTableStyle {
+    let classNames = table.className.split(' ');
+    for (let i = 0; i < classNames.length; i++) {
+        if (classNames[i].indexOf(TABLE_STYLE_CLASS_PREFIX) == 0) {
+            let className = classNames[i].substr(TABLE_STYLE_CLASS_PREFIX.length);
+            return TABLE_STYLE_CLASS_MAP[className];
+        }
+    }
+    return null;
 }
 
 function recalcSpans(td: HTMLTableCellElement, vtable: VirtualTable, row: number, col: number) {
     td.removeAttribute('colSpan');
     td.removeAttribute('rowSpan');
-    for (let i = col + 1; getCell(vtable, row, i).spanLeft; td.colSpan = ++i - col) {}
-    for (let i = row + 1; getCell(vtable, i, col).spanAbove; td.rowSpan = ++i - row) {}
+    for (let i = col + 1; i < vtable.rows[row].cells.length; i++) {
+        let cell = getCell(vtable, row, i);
+        if (cell.td || !cell.spanLeft) {
+            break;
+        }
+        td.colSpan = i + 1 - col;
+    }
+    for (let i = row + 1; i < vtable.rows.length; i++) {
+        let cell = getCell(vtable, i, col);
+        if (cell.td || !cell.spanAbove) {
+            break;
+        }
+        td.rowSpan = i + 1 - row;
+    }
 }
 
 function removeChildren(node: Node) {
@@ -272,9 +361,12 @@ function removeChildren(node: Node) {
 }
 
 function getCurrentTd(vtable: VirtualTable): HTMLTableCellElement {
+    if (!vtable.rows) {
+        return null;
+    }
     let row = Math.min(vtable.rows.length - 1, vtable.row);
     let col = Math.min(vtable.rows[row].cells.length - 1, vtable.col);
-    while (row >=0 && col >= 0) {
+    while (row >= 0 && col >= 0) {
         let cell = vtable.rows[row].cells[col];
         if (cell.td) {
             return cell.td;
@@ -310,8 +402,33 @@ function cloneCell(cell: VirtualTableCell): VirtualTableCell {
     };
 }
 
+function createRow(tr: HTMLTableRowElement, cells?: VirtualTableCell[]): VirtualTableRow {
+    return {
+        cells: cells || [],
+        tr: tr,
+    };
+}
+
 function moveChild(toNode: Node, fromNode: Node) {
     while (fromNode.firstChild) {
         toNode.appendChild(fromNode.firstChild);
     }
+}
+
+function createStyle(
+    name: string,
+    bgColorEven?: string,
+    bgColorOdd?: string,
+    topBorder?: string,
+    bottomBorder?: string,
+    verticalBorder?: string
+): VirtualTableStyle {
+    return {
+        className: TABLE_STYLE_CLASS_PREFIX + name,
+        bgColorEven: bgColorEven,
+        bgColorOdd: bgColorOdd,
+        topBorder: topBorder,
+        bottomBorder: bottomBorder,
+        verticalBorder: verticalBorder,
+    };
 }

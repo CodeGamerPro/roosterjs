@@ -226,6 +226,34 @@ declare namespace roosterjs {
          * Split current table cell vertically
          */
         SplitVertically = 12,
+        /**
+         * Use default style
+         */
+        StyleDefault = 13,
+        /**
+         * Use default style
+         */
+        StyleGrid = 14,
+        /**
+         * Use Light Lines style
+         */
+        StyleLightLines = 15,
+        /**
+         * Use Two Tones style
+         */
+        StyleTwoTones = 16,
+        /**
+         * Use Light Bands style
+         */
+        StyleLightBands = 17,
+        /**
+         * Clear style
+         */
+        StyleClear = 18,
+        /**
+         * Set column width
+         */
+        SetColumnWidth = 19,
     }
 
     const enum NodeType {
@@ -1146,48 +1174,6 @@ declare namespace roosterjs {
     function insertImage(editor: Editor, imageFile: File): void;
 
     /**
-     * Insert table into editor at current selection
-     * @param editor The editor instance
-     * @param columns Number of columns in table, it also controls the default table cell width:
-     * if columns <= 4, width = 120px; if columns <= 6, width = 100px; else width = 70px
-     * @param rows Number of rows in table
-     * @param format (Optional) The table format. If not passed, the default format will be applied:
-     * cellSpacing = '0', cellPadding = '0', borderWidth = '1px', borderStyle = 'solid', borderColor = '#c6c6c6',
-     * borderCollapse = 'collapse'
-     */
-    function insertTable(editor: Editor, columns: number, rows: number, format?: TableFormat): void;
-
-    /**
-     * The table format
-     */
-    interface TableFormat {
-        /**
-         * (Optional) The cellSpacing style for the HTML table element
-         */
-        cellSpacing?: string;
-        /**
-         * (Optional) The cellPadding style for the HTML table element
-         */
-        cellPadding?: string;
-        /**
-         * (Optional) The borderWidth style for the HTML table element
-         */
-        borderWidth?: string;
-        /**
-         * (Optional) The borderStyle style for the HTML table element
-         */
-        borderStyle?: string;
-        /**
-         * (Optional) The borderColor style for the HTML table element
-         */
-        borderColor?: string;
-        /**
-         * (Optional) The borderCollapse style for the HTML table element
-         */
-        borderCollapse?: string;
-    }
-
-    /**
      * Remove link at selection. If no links at selection, do nothing.
      * If selection contains multiple links, all of the link styles will be removed.
      * If only part of a link is selected, the whole link style will be removed.
@@ -1379,7 +1365,56 @@ declare namespace roosterjs {
      */
     function matchLink(url: string): LinkData;
 
+    /**
+     * Insert table into editor at current selection
+     * @param editor The editor instance
+     * @param columns Number of columns in table, it also controls the default table cell width:
+     * if columns <= 4, width = 120px; if columns <= 6, width = 100px; else width = 70px
+     * @param rows Number of rows in table
+     * @param format (Optional) The table format. If not passed, the default format will be applied:
+     * cellSpacing = '0', cellPadding = '0', borderWidth = '1px', borderStyle = 'solid', borderColor = '#c6c6c6',
+     * borderCollapse = 'collapse'
+     */
+    function insertTable(editor: Editor, columns: number, rows: number, format?: TableFormat): void;
+
+    /**
+     * The table format
+     */
+    interface TableFormat {
+        /**
+         * (Optional) The cellSpacing style for the HTML table element
+         */
+        cellSpacing?: string;
+        /**
+         * (Optional) The cellPadding style for the HTML table element
+         */
+        cellPadding?: string;
+        /**
+         * (Optional) The borderWidth style for the HTML table element
+         */
+        borderWidth?: string;
+        /**
+         * (Optional) The borderStyle style for the HTML table element
+         */
+        borderStyle?: string;
+        /**
+         * (Optional) The borderColor style for the HTML table element
+         */
+        borderColor?: string;
+        /**
+         * (Optional) The borderCollapse style for the HTML table element
+         */
+        borderCollapse?: string;
+    }
+
+    /**
+     * Edit table with given operation. If there is no table at cursor then no op.
+     * @param editor The editor instance
+     * @param operation Table operation
+     */
     function editTable(editor: Editor, operation: TableOperation): void;
+
+    function editTableWithParam(operation: TableOperation, table: HTMLTableElement, td?: HTMLTableCellElement, param?: any): HTMLTableCellElement;
 
     class DefaultShortcut implements EditorPlugin {
         private editor;
@@ -1554,6 +1589,29 @@ declare namespace roosterjs {
         private showWatermark();
         private hideWatermark();
         private removeWartermarkFromHtml(event);
+    }
+
+    class TableResize implements EditorPlugin {
+        private editor;
+        private onMouseOverDisposer;
+        private moving;
+        private pageX;
+        private startLeft;
+        private left;
+        private top;
+        private height;
+        private table;
+        private td;
+        initialize(editor: Editor): void;
+        dispose(): void;
+        private onMouseOver;
+        private calcAndShowHandle();
+        private showHandle();
+        private getPosition(element);
+        private getResizeHandle();
+        private onMouseDown;
+        private onMouseMove;
+        private onMouseUp;
     }
 
     class ImageResizePlugin implements EditorPlugin {

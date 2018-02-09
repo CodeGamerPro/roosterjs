@@ -1,5 +1,7 @@
 import { Editor } from 'roosterjs-editor-core';
-import execFormatWithUndo from './execFormatWithUndo';
+import { editTableWithParam } from './editTable';
+import execFormatWithUndo from '../format/execFormatWithUndo';
+import { TableOperation } from 'roosterjs-editor-types';
 
 /**
  * The table format
@@ -57,21 +59,26 @@ export default function insertTable(
     let table = document.createElement('table') as HTMLTableElement;
     fragment.appendChild(table);
     table.cellSpacing = (format && format.cellSpacing) || '0';
-    table.cellPadding = (format && format.cellPadding) || '0';
-    buildBorderStyle(table, format);
+    table.cellPadding = (format && format.cellPadding) || '1';
     for (let i = 0; i < rows; i++) {
         let tr = document.createElement('tr') as HTMLTableRowElement;
         table.appendChild(tr);
         for (let j = 0; j < columns; j++) {
             let td = document.createElement('td') as HTMLTableCellElement;
             tr.appendChild(td);
-            buildBorderStyle(td, format);
+            td.appendChild(document.createElement('br'));
+            if (format) {
+                buildBorderStyle(td, format);
+            }
             td.style.width = getTableCellWidth(columns);
         }
     }
 
     execFormatWithUndo(editor, () => {
         editor.insertNode(fragment);
+        if (!format) {
+            editTableWithParam(TableOperation.StyleDefault, table);
+        }
     });
 }
 
