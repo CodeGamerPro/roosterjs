@@ -125,10 +125,9 @@ function internalEditTable(vtable: VirtualTable, operation: TableOperation, para
         case TableOperation.InsertLeft:
         case TableOperation.InsertRight:
             let newCol = vtable.col + (operation == TableOperation.InsertLeft ? 0 : 1);
-            for (let i = 0; i < vtable.rows.length; i++) {
-                let cell = getCell(vtable, i, vtable.col);
-                vtable.rows[i].cells.splice(newCol, 0, cloneCell(cell));
-            }
+            forEachRowOfColumn(vtable, vtable.col, (cell, row) => {
+                row.cells.splice(newCol, 0, cloneCell(cell))
+            });
             break;
 
         case TableOperation.DeleteRow:
@@ -143,14 +142,13 @@ function internalEditTable(vtable: VirtualTable, operation: TableOperation, para
             break;
 
         case TableOperation.DeleteColumn:
-            for (let i = 0; i < vtable.rows.length; i++) {
-                let cell = getCell(vtable, i, vtable.col);
-                let nextCell = getCell(vtable, i, vtable.col + 1);
+            forEachRowOfColumn(vtable, vtable.col, (cell, row, i) => {
+                let nextCell = getCell(vtable, i, vtable.col);
                 if (cell.td && cell.td.colSpan > 1 && nextCell.spanLeft) {
                     nextCell.td = cell.td;
                 }
-                vtable.rows[i].cells.splice(vtable.col, 1);
-            }
+                row.cells.splice(vtable.col, 1);
+            })
             break;
 
         case TableOperation.MergeAbove:
@@ -220,18 +218,13 @@ function internalEditTable(vtable: VirtualTable, operation: TableOperation, para
             if (currentCell.td.colSpan > 1) {
                 getCell(vtable, vtable.row, vtable.col + 1).td = cloneNode(currentCell.td);
             } else {
-                for (let i = 0; i < vtable.rows.length; i++) {
-                    let cell = getCell(vtable, i, vtable.col);
-                    vtable.rows[i].cells.splice(
-                        vtable.col + 1,
-                        0,
-                        {
-                            td: i == vtable.row ? cloneNode(cell.td) : null,
-                            spanAbove: cell.spanAbove,
-                            spanLeft: i != vtable.row,
-                        }
-                    );
-                }
+                forEachRowOfColumn(vtable, vtable.col, (cell, row) => {
+                    row.cells.splice(vtable.col + 1, 0, {
+                        td: row == currentRow ? cloneNode(cell.td) : null,
+                        spanAbove: cell.spanAbove,
+                        spanLeft: row != currentRow,
+                    });
+                });
             }
             break;
 
@@ -431,3 +424,14 @@ function createStyle(
         verticalBorder: verticalBorder,
     };
 }
+
+function forEachRowOfColumn(
+    vtable: VirtualTable,
+    col: number,
+    callback: (cell: VirtualTableCell, row: VirtualTableRow, i: number) => void
+) {
+    for (let i = 0; i < vtable.rows.length; i++) {
+        callback(getCell(vtable, i, col), vtable.rows[i], i);
+    }
+}
+

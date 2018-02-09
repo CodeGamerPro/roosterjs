@@ -6,7 +6,7 @@ import { TableOperation, PluginEvent, PluginEventType, PluginDomEvent } from 'ro
 const TABLE_RESIZE_HANDLE_KEY = 'TABLE_RESIZE_HANDLE';
 const HANDLE_WIDTH = 6;
 const CONTAINER_HTML =
-`<div style="position: absolute; cursor: col-resize; width: ${HANDLE_WIDTH}px; border: solid 0 #C6C6C6; background: red"></div>`;
+`<div style="position: absolute; cursor: col-resize; width: ${HANDLE_WIDTH}px; border: solid 0 #C6C6C6;"></div>`;
 
 export default class TableResize implements EditorPlugin {
     private editor: Editor;
@@ -58,12 +58,10 @@ export default class TableResize implements EditorPlugin {
             let tr = <HTMLTableRowElement>getNodeAtCursor(this.editor, 'TR', this.td);
             let table = <HTMLTableElement>getNodeAtCursor(this.editor, 'TABLE', tr);
             if (tr && table) {
-                let width = 0;
                 let [left, top] = this.getPosition(table);
+                let handle = this.getResizeHandle();
 
                 left += this.td.offsetLeft + (this.isRtl ? 0 : this.td.offsetWidth - HANDLE_WIDTH);
-
-                let handle = this.getResizeHandle();
                 handle.style.display = '';
                 handle.style.top = top + 'px';
                 handle.style.height = table.offsetHeight + 'px';

@@ -1049,14 +1049,14 @@ declare namespace roosterjs {
      * @param editor The editor instance
      * @param expectedTag The expected tag name. If null, return the element at cursor
      * @param startNode If specified, use this node as start node to search instead of current node
-     * @returns The element at cursor or the nearest ancestor with the tag name is specified
+     * @returns The node at cursor or the nearest ancestor with the tag name is specified
      */
-    function getNodeAtCursor(editor: Editor, expectedTag?: string, startNode?: Node): Element;
+    function getNodeAtCursor(editor: Editor, expectedTag?: string, startNode?: Node): Node;
 
     /**
      * @deprecated Use cacheGetNodeAtCursor instead
      */
-    function cacheGetListElement(editor: Editor, event?: PluginEvent): Element;
+    function cacheGetListElement(editor: Editor, event?: PluginEvent): Node;
 
     /**
      * Get the node at selection from event cache if it exists, otherwise get from DOM
@@ -1071,7 +1071,7 @@ declare namespace roosterjs {
      * @param expectedTag The expected tag name. If null, return the element at cursor
      * @returns The element at cursor or the nearest ancestor with the tag name is specified
      */
-    function cacheGetNodeAtCursor(editor: Editor, event: PluginEvent, expectedTag: string): Element;
+    function cacheGetNodeAtCursor(editor: Editor, event: PluginEvent, expectedTag: string): Node;
 
     /**
      * Query nodes intersected with current selection using a selector
@@ -1609,6 +1609,7 @@ declare namespace roosterjs {
         initialize(editor: Editor): void;
         dispose(): void;
         onPluginEvent(event: PluginEvent): void;
+        private clickIntoCurrentTd(event);
         private onMouseOver;
         private calcAndShowHandle();
         private adjustHandle(pageX);

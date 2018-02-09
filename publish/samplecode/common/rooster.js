@@ -646,6 +646,7 @@ exports.default = updateSelection;
 
 Object.defineProperty(exports, "__esModule", { value: true });
 var roosterjs_editor_core_1 = __webpack_require__(2);
+var roosterjs_editor_dom_1 = __webpack_require__(0);
 /**
  * Get the node at selection
  * if editor has focus, use selection.focusNode
@@ -657,7 +658,7 @@ var roosterjs_editor_core_1 = __webpack_require__(2);
  * @param editor The editor instance
  * @param expectedTag The expected tag name. If null, return the element at cursor
  * @param startNode If specified, use this node as start node to search instead of current node
- * @returns The element at cursor or the nearest ancestor with the tag name is specified
+ * @returns The node at cursor or the nearest ancestor with the tag name is specified
  */
 function getNodeAtCursor(editor, expectedTag, startNode) {
     var node = startNode;
@@ -673,16 +674,16 @@ function getNodeAtCursor(editor, expectedTag, startNode) {
                 : selectionRange.commonAncestorContainer;
         }
     }
-    var element = node && node.nodeType == 3 /* Text */ ? node.parentElement : node;
+    node = node && node.nodeType == 3 /* Text */ ? node.parentNode : node;
     if (expectedTag) {
-        while (editor.contains(element)) {
-            if (element.tagName == expectedTag.toUpperCase()) {
-                return element;
+        while (editor.contains(node)) {
+            if (roosterjs_editor_dom_1.getTagOfNode(node) == expectedTag.toUpperCase()) {
+                return node;
             }
-            element = element.parentElement;
+            node = node.parentNode;
         }
     }
-    return editor.contains(element) ? element : null;
+    return editor.contains(node) ? node : null;
 }
 exports.default = getNodeAtCursor;
 /**
@@ -3267,19 +3268,9 @@ function queryCommandState(editor, command) {
  * @returns The format state at cursor
  */
 function getFormatState(editor, event) {
-    // TODO: for background and color, shall we also use computed style?
-    // TODO: for font size, we're not using computed style since it will size in PX while we want PT
-    // We could possibly introduce some convertion from PX to PT so we can also use computed style
-    // TODO: for BIU etc., we're using queryCommandState. Reason is users may do a Bold without first selecting anything
-    // in that case, the change is not DOM and querying DOM won't give us anything. queryCommandState can read into browser
-    // to figure out the state. It can be discussed if there is a better way since it has been seen that queryCommandState may throw error
     var nodeAtCursor = getNodeAtCursor_1.default(editor);
-    if (!nodeAtCursor) {
-        return null;
-    }
     var listState = cacheGetListState_1.default(editor, event);
-    var headerLevel = cacheGetHeaderLevel_1.default(editor, event);
-    return {
+    return nodeAtCursor ? {
         fontName: getStyleAtNode(editor, nodeAtCursor, 'font-family', true /* useComputed*/),
         fontSize: getStyleAtNode(editor, nodeAtCursor, 'font-size', false /* useComputed*/),
         isBold: queryCommandState(editor, 'bold'),
@@ -3298,8 +3289,8 @@ function getFormatState(editor, event) {
         canRedo: editor.canRedo(),
         canEditTable: !!getNodeAtCursor_1.default(editor, 'TABLE', nodeAtCursor),
         isBlockQuote: queryNodesWithSelection_1.default(editor, 'blockquote').length > 0,
-        headerLevel: headerLevel,
-    };
+        headerLevel: cacheGetHeaderLevel_1.default(editor, event),
+    } : null;
 }
 exports.default = getFormatState;
 
@@ -4158,9 +4149,9 @@ var Editor = /** @class */ (function () {
                 _this.core.cachedSelectionRange = null;
             }),
             attachDomEvent_1.default(this.core, IS_IE_OR_EDGE ? 'beforedeactivate' : 'blur', null, function () {
-                if (!_this.core.cachedSelectionRange) {
-                    saveSelectionRange_1.default(_this.core);
-                }
+                //                if (!this.core.cachedSelectionRange) {
+                saveSelectionRange_1.default(_this.core);
+                //                }
             }),
         ];
     };
@@ -5060,7 +5051,7 @@ function editTableNode(operation, node, param) {
     }
     else if (node instanceof HTMLTableCellElement) {
         td = node;
-        for (table = td; parent && table.tagName != 'TABLE'; table = table.parentElement) { }
+        for (table = td; parent && table.tagName != 'TABLE'; table = table.parentNode) { }
     }
     if (table && td) {
         var virtualTable = createVirtualTable(table, td);
@@ -5129,11 +5120,10 @@ function internalEditTable(vtable, operation, param) {
             break;
         case 2 /* InsertLeft */:
         case 3 /* InsertRight */:
-            var newCol = vtable.col + (operation == 2 /* InsertLeft */ ? 0 : 1);
-            for (var i = 0; i < vtable.rows.length; i++) {
-                var cell = getCell(vtable, i, vtable.col);
-                vtable.rows[i].cells.splice(newCol, 0, cloneCell(cell));
-            }
+            var newCol_1 = vtable.col + (operation == 2 /* InsertLeft */ ? 0 : 1);
+            forEachRowOfColumn(vtable, vtable.col, function (cell, row) {
+                row.cells.splice(newCol_1, 0, cloneCell(cell));
+            });
             break;
         case 6 /* DeleteRow */:
             for (var i = 0; i < currentRow.cells.length; i++) {
@@ -5143,17 +5133,16 @@ function internalEditTable(vtable, operation, param) {
                     nextCell.td = cell.td;
                 }
             }
-            vtable.rows.splice(vtable.col, 1);
+            vtable.rows.splice(vtable.row, 1);
             break;
         case 5 /* DeleteColumn */:
-            for (var i = 0; i < vtable.rows.length; i++) {
-                var cell = getCell(vtable, i, vtable.col);
-                var nextCell = getCell(vtable, i, vtable.col + 1);
+            forEachRowOfColumn(vtable, vtable.col, function (cell, row, i) {
+                var nextCell = getCell(vtable, i, vtable.col);
                 if (cell.td && cell.td.colSpan > 1 && nextCell.spanLeft) {
                     nextCell.td = cell.td;
                 }
-                vtable.rows[i].cells.splice(vtable.col, 1);
-            }
+                row.cells.splice(vtable.col, 1);
+            });
             break;
         case 7 /* MergeAbove */:
         case 8 /* MergeBelow */:
@@ -5175,7 +5164,7 @@ function internalEditTable(vtable, operation, param) {
         case 9 /* MergeLeft */:
         case 10 /* MergeRight */:
             var colStep = operation == 9 /* MergeLeft */ ? -1 : 1;
-            for (var colIndex = vtable.col + colStep; colIndex >= 0 && colIndex < vtable.rows[vtable.col].cells.length; colIndex += colStep) {
+            for (var colIndex = vtable.col + colStep; colIndex >= 0 && colIndex < vtable.rows[vtable.row].cells.length; colIndex += colStep) {
                 var cell = getCell(vtable, vtable.row, colIndex);
                 if (cell.td && !cell.spanLeft) {
                     var leftCell = colIndex < vtable.col ? cell : currentCell;
@@ -5212,14 +5201,13 @@ function internalEditTable(vtable, operation, param) {
                 getCell(vtable, vtable.row, vtable.col + 1).td = cloneNode(currentCell.td);
             }
             else {
-                for (var i = 0; i < vtable.rows.length; i++) {
-                    var cell = getCell(vtable, i, vtable.col);
-                    vtable.rows[i].cells.splice(vtable.col + 1, 0, {
-                        td: i == vtable.row ? cloneNode(cell.td) : null,
+                forEachRowOfColumn(vtable, vtable.col, function (cell, row) {
+                    row.cells.splice(vtable.col + 1, 0, {
+                        td: row == currentRow ? cloneNode(cell.td) : null,
                         spanAbove: cell.spanAbove,
-                        spanLeft: i != vtable.row,
+                        spanLeft: row != currentRow,
                     });
-                }
+                });
             }
             break;
         case 13 /* StyleDefault */:
@@ -5358,7 +5346,11 @@ function getCell(vtable, row, col) {
     };
 }
 function cloneNode(node) {
-    return node ? node.cloneNode(false /*deep*/) : null;
+    var newNode = node ? node.cloneNode(false /*deep*/) : null;
+    if (newNode && !newNode.firstChild) {
+        newNode.appendChild(node.ownerDocument.createElement('br'));
+    }
+    return newNode;
 }
 function cloneCell(cell) {
     return {
@@ -5392,6 +5384,11 @@ function createStyle(name, bgColorEven, bgColorOdd, topBorder, bottomBorder, ver
         bottomBorder: bottomBorder,
         verticalBorder: verticalBorder,
     };
+}
+function forEachRowOfColumn(vtable, col, callback) {
+    for (var i = 0; i < vtable.rows.length; i++) {
+        callback(getCell(vtable, i, col), vtable.rows[i], i);
+    }
 }
 
 
@@ -7362,9 +7359,9 @@ var Paste = /** @class */ (function () {
         var parents = [];
         while (leaf) {
             if (leaf.nodeType == 3 /* Text */ &&
-                leaf.parentElement &&
-                parents.indexOf(leaf.parentElement) < 0) {
-                parents.push(leaf.parentElement);
+                leaf.parentNode &&
+                parents.indexOf(leaf.parentNode) < 0) {
+                parents.push(leaf.parentNode);
             }
             leaf = roosterjs_editor_dom_1.getNextLeafSibling(node, leaf);
         }
@@ -7978,7 +7975,7 @@ function fixWordListComments(child, removeComments) {
                 // Remove the comments out if the call specified it out
                 if (removeComments) {
                     child.parentNode.removeChild(child);
-                    endComment.parentElement.removeChild(endComment);
+                    endComment.parentNode.removeChild(endComment);
                 }
                 // Last, make sure we return the new element out instead of the comment
                 child = newSpan;
@@ -8366,27 +8363,25 @@ var TableResize = /** @class */ (function () {
     };
     TableResize.prototype.onPluginEvent = function (event) {
         if (this.td && (event.eventType == 0 /* KeyDown */ ||
-            event.eventType == 4 /* MouseDown */ ||
-            event.eventType == 6 /* ContentChanged */)) {
+            event.eventType == 6 /* ContentChanged */ ||
+            (event.eventType == 4 /* MouseDown */ && !this.clickIntoCurrentTd(event)))) {
             this.td = null;
             this.calcAndShowHandle();
         }
+    };
+    TableResize.prototype.clickIntoCurrentTd = function (event) {
+        var mouseEvent = event.rawEvent;
+        var target = mouseEvent.target;
+        return target instanceof Node && (this.td == target || roosterjs_editor_dom_1.contains(this.td, target));
     };
     TableResize.prototype.calcAndShowHandle = function () {
         if (this.td) {
             var tr = roosterjs_editor_api_1.getNodeAtCursor(this.editor, 'TR', this.td);
             var table = roosterjs_editor_api_1.getNodeAtCursor(this.editor, 'TABLE', tr);
             if (tr && table) {
-                var width = 0;
                 var _a = this.getPosition(table), left = _a[0], top_1 = _a[1];
-                for (var i = 0; i < tr.cells.length; i++) {
-                    width += tr.cells[i].offsetWidth;
-                    if (tr.cells[i] == this.td) {
-                        break;
-                    }
-                }
-                left += this.isRtl ? table.offsetWidth - width : width - HANDLE_WIDTH;
                 var handle = this.getResizeHandle();
+                left += this.td.offsetLeft + (this.isRtl ? 0 : this.td.offsetWidth - HANDLE_WIDTH);
                 handle.style.display = '';
                 handle.style.top = top_1 + 'px';
                 handle.style.height = table.offsetHeight + 'px';
