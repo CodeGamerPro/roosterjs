@@ -1044,12 +1044,7 @@ declare namespace roosterjs {
     }
 
     /**
-     * Get the node at selection
-     * if editor has focus, use selection.focusNode
-     * if for some reason, the focus node does not get us a good node
-     * fallback to the cached selection range if there is any
-     * and use the start container if selection is collapsed or commonAncestorContainer otherwise.
-     * If an expectedTag is specified, the return value will be the nearest ancestor of current node
+     * Get the node at selection. If an expectedTag is specified, return the nearest ancestor of current node
      * which matches the tag name, or null if no match found in editor.
      * @param editor The editor instance
      * @param expectedTag The expected tag name. If null, return the element at cursor
@@ -1064,12 +1059,8 @@ declare namespace roosterjs {
     function cacheGetListElement(editor: Editor, event?: PluginEvent): Node;
 
     /**
-     * Get the node at selection from event cache if it exists, otherwise get from DOM
-     * if editor has focus, use selection.focusNode
-     * if for some reason, the focus node does not get us a good node
-     * fallback to the cached selection range if there is any
-     * and use the start container if selection is collapsed or commonAncestorContainer otherwise.
-     * If an expectedTag is specified, the return value will be the nearest ancestor of current node
+     * Get the node at selection from event cache if it exists.
+     * If an expectedTag is specified, return the nearest ancestor of current node
      * which matches the tag name, or null if no match found in editor.
      * @param editor The editor instance
      * @param event Event object to get cached object from

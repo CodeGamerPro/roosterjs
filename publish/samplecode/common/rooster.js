@@ -649,12 +649,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 var roosterjs_editor_core_1 = __webpack_require__(2);
 var roosterjs_editor_dom_1 = __webpack_require__(0);
 /**
- * Get the node at selection
- * if editor has focus, use selection.focusNode
- * if for some reason, the focus node does not get us a good node
- * fallback to the cached selection range if there is any
- * and use the start container if selection is collapsed or commonAncestorContainer otherwise.
- * If an expectedTag is specified, the return value will be the nearest ancestor of current node
+ * Get the node at selection. If an expectedTag is specified, return the nearest ancestor of current node
  * which matches the tag name, or null if no match found in editor.
  * @param editor The editor instance
  * @param expectedTag The expected tag name. If null, return the element at cursor
@@ -688,12 +683,8 @@ function getNodeAtCursor(editor, expectedTag, startNode) {
 }
 exports.default = getNodeAtCursor;
 /**
- * Get the node at selection from event cache if it exists, otherwise get from DOM
- * if editor has focus, use selection.focusNode
- * if for some reason, the focus node does not get us a good node
- * fallback to the cached selection range if there is any
- * and use the start container if selection is collapsed or commonAncestorContainer otherwise.
- * If an expectedTag is specified, the return value will be the nearest ancestor of current node
+ * Get the node at selection from event cache if it exists.
+ * If an expectedTag is specified, return the nearest ancestor of current node
  * which matches the tag name, or null if no match found in editor.
  * @param editor The editor instance
  * @param event Event object to get cached object from
@@ -3282,9 +3273,19 @@ function queryCommandState(editor, command) {
  * @returns The format state at cursor
  */
 function getFormatState(editor, event) {
+    // TODO: for background and color, shall we also use computed style?
+    // TODO: for font size, we're not using computed style since it will size in PX while we want PT
+    // We could possibly introduce some convertion from PX to PT so we can also use computed style
+    // TODO: for BIU etc., we're using queryCommandState. Reason is users may do a Bold without first selecting anything
+    // in that case, the change is not DOM and querying DOM won't give us anything. queryCommandState can read into browser
+    // to figure out the state. It can be discussed if there is a better way since it has been seen that queryCommandState may throw error
     var nodeAtCursor = getNodeAtCursor_1.default(editor);
+    if (!nodeAtCursor) {
+        return null;
+    }
     var listState = cacheGetListState_1.default(editor, event);
-    return nodeAtCursor ? {
+    var headerLevel = cacheGetHeaderLevel_1.default(editor, event);
+    return {
         fontName: getStyleAtNode(editor, nodeAtCursor, 'font-family', true /* useComputed*/),
         fontSize: getStyleAtNode(editor, nodeAtCursor, 'font-size', false /* useComputed*/),
         isBold: queryCommandState(editor, 'bold'),
@@ -3302,8 +3303,8 @@ function getFormatState(editor, event) {
         canUndo: editor.canUndo(),
         canRedo: editor.canRedo(),
         isBlockQuote: queryNodesWithSelection_1.default(editor, 'blockquote').length > 0,
-        headerLevel: cacheGetHeaderLevel_1.default(editor, event),
-    } : null;
+        headerLevel: headerLevel,
+    };
 }
 exports.default = getFormatState;
 
@@ -4163,9 +4164,7 @@ var Editor = /** @class */ (function () {
                 _this.core.cachedSelectionRange = null;
             }),
             attachDomEvent_1.default(this.core, IS_IE_OR_EDGE ? 'beforedeactivate' : 'blur', null, function () {
-                //                if (!this.core.cachedSelectionRange) {
                 saveSelectionRange_1.default(_this.core);
-                //                }
             }),
         ];
     };
@@ -6886,6 +6885,7 @@ function editTable(editor, operation) {
             var fallbackTd = roosterjs_editor_dom_1.editTableNode(operation, td);
             td = editor.contains(td) ? td : fallbackTd;
             editor.focus();
+            return td;
         }, true /*preserveSelection*/);
     }
 }

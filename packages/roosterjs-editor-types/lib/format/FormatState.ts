@@ -48,7 +48,7 @@ interface FormatState {
     // Whether the content can be undone
     canUndo?: boolean;
 
-    // Whether the content can be redone
+    // Whether the content ca nbe redone
     canRedo?: boolean;
 
     // Header level (0-6, 0 means no header)

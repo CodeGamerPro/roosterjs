@@ -16,6 +16,7 @@ export default function editTable(editor: Editor, operation: TableOperation) {
             let fallbackTd = editTableNode(operation, td);
             td = editor.contains(td) ? td : fallbackTd;
             editor.focus();
+            return td;
         }, true /*preserveSelection*/);
     }
 }

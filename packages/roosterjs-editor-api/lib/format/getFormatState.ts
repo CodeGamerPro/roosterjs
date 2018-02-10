@@ -53,9 +53,21 @@ function queryCommandState(editor: Editor, command: string): boolean {
  * @returns The format state at cursor
  */
 export default function getFormatState(editor: Editor, event?: PluginEvent): FormatState {
+    // TODO: for background and color, shall we also use computed style?
+    // TODO: for font size, we're not using computed style since it will size in PX while we want PT
+    // We could possibly introduce some convertion from PX to PT so we can also use computed style
+    // TODO: for BIU etc., we're using queryCommandState. Reason is users may do a Bold without first selecting anything
+    // in that case, the change is not DOM and querying DOM won't give us anything. queryCommandState can read into browser
+    // to figure out the state. It can be discussed if there is a better way since it has been seen that queryCommandState may throw error
     let nodeAtCursor = getNodeAtCursor(editor);
+
+    if (!nodeAtCursor) {
+        return null;
+    }
+
     let listState = cacheGetListState(editor, event);
-    return nodeAtCursor ? {
+    let headerLevel = cacheGetHeaderLevel(editor, event);
+    return {
         fontName: getStyleAtNode(editor, nodeAtCursor, 'font-family', true /* useComputed*/),
         fontSize: getStyleAtNode(editor, nodeAtCursor, 'font-size', false /* useComputed*/),
         isBold: queryCommandState(editor, 'bold'),
@@ -78,6 +90,6 @@ export default function getFormatState(editor: Editor, event?: PluginEvent): For
         canUndo: editor.canUndo(),
         canRedo: editor.canRedo(),
         isBlockQuote: queryNodesWithSelection(editor, 'blockquote').length > 0,
-        headerLevel: cacheGetHeaderLevel(editor, event),
-    } : null;
+        headerLevel: headerLevel,
+    };
 }
