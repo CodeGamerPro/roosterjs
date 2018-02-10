@@ -125,7 +125,7 @@ function internalEditTable(vtable: VirtualTable, operation: TableOperation, para
         case TableOperation.InsertLeft:
         case TableOperation.InsertRight:
             let newCol = vtable.col + (operation == TableOperation.InsertLeft ? 0 : 1);
-            forEachRowOfColumn(vtable, vtable.col, (cell, row) => {
+            forEachRowOfCurrentColumn(vtable, (cell, row) => {
                 row.cells.splice(newCol, 0, cloneCell(cell))
             });
             break;
@@ -142,7 +142,7 @@ function internalEditTable(vtable: VirtualTable, operation: TableOperation, para
             break;
 
         case TableOperation.DeleteColumn:
-            forEachRowOfColumn(vtable, vtable.col, (cell, row, i) => {
+            forEachRowOfCurrentColumn(vtable, (cell, row, i) => {
                 let nextCell = getCell(vtable, i, vtable.col);
                 if (cell.td && cell.td.colSpan > 1 && nextCell.spanLeft) {
                     nextCell.td = cell.td;
@@ -218,7 +218,7 @@ function internalEditTable(vtable: VirtualTable, operation: TableOperation, para
             if (currentCell.td.colSpan > 1) {
                 getCell(vtable, vtable.row, vtable.col + 1).td = cloneNode(currentCell.td);
             } else {
-                forEachRowOfColumn(vtable, vtable.col, (cell, row) => {
+                forEachRowOfCurrentColumn(vtable, (cell, row) => {
                     row.cells.splice(vtable.col + 1, 0, {
                         td: row == currentRow ? cloneNode(cell.td) : null,
                         spanAbove: cell.spanAbove,
@@ -425,13 +425,12 @@ function createStyle(
     };
 }
 
-function forEachRowOfColumn(
+function forEachRowOfCurrentColumn(
     vtable: VirtualTable,
-    col: number,
     callback: (cell: VirtualTableCell, row: VirtualTableRow, i: number) => void
 ) {
     for (let i = 0; i < vtable.rows.length; i++) {
-        callback(getCell(vtable, i, col), vtable.rows[i], i);
+        callback(getCell(vtable, i, vtable.col), vtable.rows[i], i);
     }
 }
 
