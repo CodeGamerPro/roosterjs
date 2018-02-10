@@ -36,5 +36,5 @@ export { default as toggleSuperscript } from './format/toggleSuperscript';
 export { default as toggleUnderline } from './format/toggleUnderline';
 export { default as toggleHeader } from './format/toggleHeader';
 export { default as matchLink } from './linkMatch/matchLink';
-export { default as insertTable, TableFormat } from './table/insertTable';
+export { default as insertTable } from './table/insertTable';
 export { default as editTable } from './table/editTable';

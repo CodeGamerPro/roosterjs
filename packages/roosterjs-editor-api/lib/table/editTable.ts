@@ -2,7 +2,7 @@ import execFormatWithUndo from '../format/execFormatWithUndo';
 import getNodeAtCursor from '../cursor/getNodeAtCursor';
 import { Editor } from 'roosterjs-editor-core';
 import { TableOperation } from 'roosterjs-editor-types';
-import { editTableNode } from 'roosterjs-editor-dom';
+import { modifyTable } from 'roosterjs-editor-dom';
 
 /**
  * Edit table with given operation. If there is no table at cursor then no op.
@@ -13,7 +13,7 @@ export default function editTable(editor: Editor, operation: TableOperation) {
     let td = getNodeAtCursor(editor, 'TD') as HTMLTableCellElement;
     if (td) {
         execFormatWithUndo(editor, () => {
-            let fallbackTd = editTableNode(operation, td);
+            let fallbackTd = modifyTable(td, operation);
             td = editor.contains(td) ? td : fallbackTd;
             editor.focus();
             return td;

@@ -1,7 +1,7 @@
 import { Editor, EditorPlugin } from 'roosterjs-editor-core';
-import { contains, fromHtml, editTableNode } from 'roosterjs-editor-dom';
+import { contains, fromHtml, setTableColumnWidth } from 'roosterjs-editor-dom';
 import { execFormatWithUndo, getNodeAtCursor } from 'roosterjs-editor-api';
-import { TableOperation, PluginEvent, PluginEventType, PluginDomEvent } from 'roosterjs-editor-types';
+import { PluginEvent, PluginEventType, PluginDomEvent } from 'roosterjs-editor-types';
 
 const TABLE_RESIZE_HANDLE_KEY = 'TABLE_RESIZE_HANDLE';
 const HANDLE_WIDTH = 6;
@@ -129,7 +129,7 @@ export default class TableResize implements EditorPlugin {
 
         if (e.pageX != this.initialPageX) {
             let newWidth = this.td.clientWidth - cellPadding * 2 + (e.pageX - this.initialPageX) * (this.isRtl ? -1 : 1);
-            execFormatWithUndo(this.editor, () => editTableNode(TableOperation.SetColumnWidth, this.td, newWidth));
+            execFormatWithUndo(this.editor, () => setTableColumnWidth(this.td, newWidth + 'px'));
         }
 
         this.calcAndShowHandle();

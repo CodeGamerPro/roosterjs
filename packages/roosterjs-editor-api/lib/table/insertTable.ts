@@ -1,42 +1,6 @@
-import { Editor } from 'roosterjs-editor-core';
-import { editTableNode } from 'roosterjs-editor-dom';
 import execFormatWithUndo from '../format/execFormatWithUndo';
-import { TableOperation } from 'roosterjs-editor-types';
-
-/**
- * The table format
- */
-export interface TableFormat {
-    /**
-     * (Optional) The cellSpacing style for the HTML table element
-     */
-    cellSpacing?: string;
-
-    /**
-     * (Optional) The cellPadding style for the HTML table element
-     */
-    cellPadding?: string;
-
-    /**
-     * (Optional) The borderWidth style for the HTML table element
-     */
-    borderWidth?: string;
-
-    /**
-     * (Optional) The borderStyle style for the HTML table element
-     */
-    borderStyle?: string;
-
-    /**
-     * (Optional) The borderColor style for the HTML table element
-     */
-    borderColor?: string;
-
-    /**
-     * (Optional) The borderCollapse style for the HTML table element
-     */
-    borderCollapse?: string;
-}
+import { Editor } from 'roosterjs-editor-core';
+import { formatTable, TableFormatName } from 'roosterjs-editor-dom';
 
 /**
  * Insert table into editor at current selection
@@ -52,14 +16,14 @@ export default function insertTable(
     editor: Editor,
     columns: number,
     rows: number,
-    format?: TableFormat
+    format: TableFormatName = 'Default'
 ) {
     let document = editor.getDocument();
     let fragment = document.createDocumentFragment();
     let table = document.createElement('table') as HTMLTableElement;
     fragment.appendChild(table);
-    table.cellSpacing = (format && format.cellSpacing) || '0';
-    table.cellPadding = (format && format.cellPadding) || '1';
+    table.cellSpacing = '0';
+    table.cellPadding = '1';
     for (let i = 0; i < rows; i++) {
         let tr = document.createElement('tr') as HTMLTableRowElement;
         table.appendChild(tr);
@@ -67,27 +31,14 @@ export default function insertTable(
             let td = document.createElement('td') as HTMLTableCellElement;
             tr.appendChild(td);
             td.appendChild(document.createElement('br'));
-            if (format) {
-                buildBorderStyle(td, format);
-            }
             td.style.width = getTableCellWidth(columns);
         }
     }
 
     execFormatWithUndo(editor, () => {
         editor.insertNode(fragment);
-        if (!format) {
-            editTableNode(TableOperation.StyleDefault, table);
-        }
+        formatTable(table, format);
     });
-}
-
-function buildBorderStyle(node: HTMLElement, format: TableFormat) {
-    format = format || {};
-    node.style.borderWidth = format.borderWidth || '1px';
-    node.style.borderStyle = format.borderStyle || 'solid';
-    node.style.borderColor = format.borderColor || '#c6c6c6';
-    node.style.borderCollapse = format.borderCollapse || 'collapse';
 }
 
 function getTableCellWidth(columns: number): string {

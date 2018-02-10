@@ -63,41 +63,6 @@ const enum TableOperation {
      * Split current table cell vertically
      */
     SplitVertically,
-
-    /**
-     * Use default style
-     */
-    StyleDefault,
-
-    /**
-     * Use default style
-     */
-    StyleGrid,
-
-    /**
-     * Use Light Lines style
-     */
-    StyleLightLines,
-
-    /**
-     * Use Two Tones style
-     */
-    StyleTwoTones,
-
-    /**
-     * Use Light Bands style
-     */
-    StyleLightBands,
-
-    /**
-     * Clear style
-     */
-    StyleClear,
-
-    /**
-     * Set column width
-     */
-    SetColumnWidth,
 }
 
 export default TableOperation;

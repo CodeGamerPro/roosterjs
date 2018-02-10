@@ -225,34 +225,6 @@ export const enum TableOperation {
      * Split current table cell vertically
      */
     SplitVertically = 12,
-    /**
-     * Use default style
-     */
-    StyleDefault = 13,
-    /**
-     * Use default style
-     */
-    StyleGrid = 14,
-    /**
-     * Use Light Lines style
-     */
-    StyleLightLines = 15,
-    /**
-     * Use Two Tones style
-     */
-    StyleTwoTones = 16,
-    /**
-     * Use Light Bands style
-     */
-    StyleLightBands = 17,
-    /**
-     * Clear style
-     */
-    StyleClear = 18,
-    /**
-     * Set column width
-     */
-    SetColumnWidth = 19,
 }
 
 export const enum NodeType {
@@ -628,12 +600,37 @@ export function wrap(node: Node, htmlFragment: string): Node;
 export function wrapAll(nodes: Node[], htmlFragment?: string): Node;
 
 /**
- * Edit the given TABLE or TD node
+ * Modify the given TABLE
  * @param operation Operation to perform
  * @param node The TABLE or TD node. If TABLE node is provided, it will use the first TD as current node
- * @param param Optionial parameter, used by some operation type.
  */
-export function editTableNode(operation: TableOperation, node: HTMLTableCellElement | HTMLTableElement, param?: any): HTMLTableCellElement;
+export function modifyTable(td: HTMLTableCellElement, operation: TableOperation): HTMLTableCellElement;
+
+export function setTableColumnWidth(td: HTMLTableCellElement, width: string): HTMLTableCellElement;
+
+export function formatTable(table: HTMLTableElement, formatName: TableFormatName): void;
+
+export interface TableFormat {
+    className: string;
+    bgColorEven: string;
+    bgColorOdd: string;
+    topBorder: string;
+    bottomBorder: string;
+    verticalBorder: string;
+}
+
+export function addTableFormat(name: string, format: TableFormat): void;
+
+export type TableFormatName = keyof typeof TABLE_STYLE_CLASS_MAP;
+
+export const TABLE_STYLE_CLASS_MAP: {
+    Default: TableFormat;
+    LightLines: TableFormat;
+    TwoTones: TableFormat;
+    LightBands: TableFormat;
+    Grid: TableFormat;
+    Clear: TableFormat;
+};
 
 export class Editor {
     private undoService;
@@ -1389,37 +1386,7 @@ export function matchLink(url: string): LinkData;
  * cellSpacing = '0', cellPadding = '0', borderWidth = '1px', borderStyle = 'solid', borderColor = '#c6c6c6',
  * borderCollapse = 'collapse'
  */
-export function insertTable(editor: Editor, columns: number, rows: number, format?: TableFormat): void;
-
-/**
- * The table format
- */
-export interface TableFormat {
-    /**
-     * (Optional) The cellSpacing style for the HTML table element
-     */
-    cellSpacing?: string;
-    /**
-     * (Optional) The cellPadding style for the HTML table element
-     */
-    cellPadding?: string;
-    /**
-     * (Optional) The borderWidth style for the HTML table element
-     */
-    borderWidth?: string;
-    /**
-     * (Optional) The borderStyle style for the HTML table element
-     */
-    borderStyle?: string;
-    /**
-     * (Optional) The borderColor style for the HTML table element
-     */
-    borderColor?: string;
-    /**
-     * (Optional) The borderCollapse style for the HTML table element
-     */
-    borderCollapse?: string;
-}
+export function insertTable(editor: Editor, columns: number, rows: number, format?: TableFormatName): void;
 
 /**
  * Edit table with given operation. If there is no table at cursor then no op.
