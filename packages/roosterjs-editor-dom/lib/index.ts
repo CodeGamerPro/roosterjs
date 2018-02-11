@@ -51,5 +51,4 @@ export { default as unwrap } from './utils/unwrap';
 export { default as wrap } from './utils/wrap';
 export { default as wrapAll } from './utils/wrapAll';
 
-export { default as modifyTable, setTableColumnWidth, formatTable } from './table/editTable';
-export { default as TableFormat, addTableFormat, TableFormatName, TABLE_STYLE_CLASS_MAP } from './table/TableFormat';
+export { default as VTable, VCell } from './table/VTable';

@@ -173,6 +173,32 @@ declare namespace roosterjs {
         Numbering = 2,
     }
 
+    /**
+     * Table format
+     */
+    interface TableFormat {
+        /**
+         * Background color for even rows
+         */
+        bgColorEven: string;
+        /**
+         * Background color for odd rows
+         */
+        bgColorOdd: string;
+        /**
+         * Top border color for each row
+         */
+        topBorderColor: string;
+        /**
+         * Bottom border color for each row
+         */
+        bottomBorderColor: string;
+        /**
+         * Vertical border color for each row
+         */
+        verticalBorderColor: string;
+    }
+
     const enum TableOperation {
         /**
          * Insert a row above current row
@@ -600,38 +626,30 @@ declare namespace roosterjs {
 
     function wrapAll(nodes: Node[], htmlFragment?: string): Node;
 
-    /**
-     * Modify the given TABLE
-     * @param operation Operation to perform
-     * @param node The TABLE or TD node. If TABLE node is provided, it will use the first TD as current node
-     */
-    function modifyTable(td: HTMLTableCellElement, operation: TableOperation): HTMLTableCellElement;
-
-    function setTableColumnWidth(td: HTMLTableCellElement, width: string): HTMLTableCellElement;
-
-    function formatTable(table: HTMLTableElement, formatName: TableFormatName): void;
-
-    interface TableFormat {
-        className: string;
-        bgColorEven: string;
-        bgColorOdd: string;
-        topBorder: string;
-        bottomBorder: string;
-        verticalBorder: string;
+    class VTable {
+        table: HTMLTableElement;
+        cells: VCell[][];
+        row: number;
+        col: number;
+        private trPrototype;
+        constructor(node: HTMLTableElement | HTMLTableCellElement);
+        writeBack(): void;
+        applyFormat(format: TableFormat): void;
+        forEachCellOfCurrentColumn(callback: (cell: VCell, row: VCell[], i: number) => void): void;
+        forEachCellOfCurrentRow(callback: (cell: VCell, i: number) => void): void;
+        getCell(row: number, col: number): VCell;
+        getCurrentTd(): HTMLTableCellElement;
+        static moveChildren(fromNode: Node, toNode?: Node): void;
+        static cloneNode<T extends Node>(node: T): T;
+        static cloneCell(cell: VCell): VCell;
+        private recalcSpans(row, col);
     }
 
-    function addTableFormat(name: string, format: TableFormat): void;
-
-    type TableFormatName = keyof typeof TABLE_STYLE_CLASS_MAP;
-
-    const TABLE_STYLE_CLASS_MAP: {
-        Default: TableFormat;
-        LightLines: TableFormat;
-        TwoTones: TableFormat;
-        LightBands: TableFormat;
-        Grid: TableFormat;
-        Clear: TableFormat;
-    };
+    interface VCell {
+        td?: HTMLTableCellElement;
+        spanLeft?: boolean;
+        spanAbove?: boolean;
+    }
 
     class Editor {
         private undoService;
@@ -1384,10 +1402,9 @@ declare namespace roosterjs {
      * if columns <= 4, width = 120px; if columns <= 6, width = 100px; else width = 70px
      * @param rows Number of rows in table
      * @param format (Optional) The table format. If not passed, the default format will be applied:
-     * cellSpacing = '0', cellPadding = '0', borderWidth = '1px', borderStyle = 'solid', borderColor = '#c6c6c6',
-     * borderCollapse = 'collapse'
+     * background color: #FFF; border color: #ABABAB
      */
-    function insertTable(editor: Editor, columns: number, rows: number, format?: TableFormatName): void;
+    function insertTable(editor: Editor, columns: number, rows: number, format?: TableFormat): void;
 
     /**
      * Edit table with given operation. If there is no table at cursor then no op.
@@ -1395,6 +1412,13 @@ declare namespace roosterjs {
      * @param operation Table operation
      */
     function editTable(editor: Editor, operation: TableOperation): void;
+
+    /**
+     * Format table
+     * @param table The table to format
+     * @param formatName Name of the format to use
+     */
+    function formatTable(table: HTMLTableElement, format: TableFormat): void;
 
     class DefaultShortcut implements EditorPlugin {
         private editor;
@@ -1596,6 +1620,7 @@ declare namespace roosterjs {
         private onMouseDown;
         private onMouseMove;
         private onMouseUp;
+        private setTableColumnWidth(width);
     }
 
     class ImageResizePlugin implements EditorPlugin {

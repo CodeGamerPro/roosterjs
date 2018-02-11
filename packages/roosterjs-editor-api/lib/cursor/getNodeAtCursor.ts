@@ -10,7 +10,11 @@ import { getTagOfNode } from 'roosterjs-editor-dom';
  * @param startNode If specified, use this node as start node to search instead of current node
  * @returns The node at cursor or the nearest ancestor with the tag name is specified
  */
-export default function getNodeAtCursor(editor: Editor, expectedTag?: string, startNode?: Node): Node {
+export default function getNodeAtCursor(
+    editor: Editor,
+    expectedTag?: string,
+    startNode?: Node
+): Node {
     let node = startNode;
     if (!node && editor.hasFocus()) {
         let sel = editor.getSelection();
@@ -47,8 +51,14 @@ export default function getNodeAtCursor(editor: Editor, expectedTag?: string, st
  * @param expectedTag The expected tag name. If null, return the element at cursor
  * @returns The element at cursor or the nearest ancestor with the tag name is specified
  */
-export function cacheGetNodeAtCursor(editor: Editor, event: PluginEvent, expectedTag: string): Node {
-    return cacheGetEventData(event, 'GET_NODE_AT_CURSOR_' + expectedTag, () => getNodeAtCursor(editor, expectedTag));
+export function cacheGetNodeAtCursor(
+    editor: Editor,
+    event: PluginEvent,
+    expectedTag: string
+): Node {
+    return cacheGetEventData(event, 'GET_NODE_AT_CURSOR_' + expectedTag, () =>
+        getNodeAtCursor(editor, expectedTag)
+    );
 }
 
 /**

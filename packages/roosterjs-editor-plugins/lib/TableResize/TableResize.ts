@@ -1,12 +1,11 @@
 import { Editor, EditorPlugin } from 'roosterjs-editor-core';
-import { contains, fromHtml, setTableColumnWidth } from 'roosterjs-editor-dom';
+import { contains, fromHtml, VTable } from 'roosterjs-editor-dom';
 import { execFormatWithUndo, getNodeAtCursor } from 'roosterjs-editor-api';
 import { PluginEvent, PluginEventType, PluginDomEvent } from 'roosterjs-editor-types';
 
 const TABLE_RESIZE_HANDLE_KEY = 'TABLE_RESIZE_HANDLE';
 const HANDLE_WIDTH = 6;
-const CONTAINER_HTML =
-`<div style="position: absolute; cursor: col-resize; width: ${HANDLE_WIDTH}px; border: solid 0 #C6C6C6;"></div>`;
+const CONTAINER_HTML = `<div style="position: absolute; cursor: col-resize; width: ${HANDLE_WIDTH}px; border: solid 0 #C6C6C6;"></div>`;
 
 export default class TableResize implements EditorPlugin {
     private editor: Editor;
@@ -19,7 +18,7 @@ export default class TableResize implements EditorPlugin {
 
     initialize(editor: Editor) {
         this.editor = editor;
-        this.onMouseOverDisposer = this.editor.addDomEventHandler('mouseover', this.onMouseOver)
+        this.onMouseOverDisposer = this.editor.addDomEventHandler('mouseover', this.onMouseOver);
     }
 
     dispose() {
@@ -29,11 +28,12 @@ export default class TableResize implements EditorPlugin {
 
     onPluginEvent(event: PluginEvent) {
         if (
-            this.td && (
-            event.eventType == PluginEventType.KeyDown ||
-            event.eventType == PluginEventType.ContentChanged ||
-            (event.eventType == PluginEventType.MouseDown && !this.clickIntoCurrentTd(<PluginDomEvent>event))
-        )) {
+            this.td &&
+            (event.eventType == PluginEventType.KeyDown ||
+                event.eventType == PluginEventType.ContentChanged ||
+                (event.eventType == PluginEventType.MouseDown &&
+                    !this.clickIntoCurrentTd(<PluginDomEvent>event)))
+        ) {
             this.td = null;
             this.calcAndShowHandle();
         }
@@ -51,7 +51,7 @@ export default class TableResize implements EditorPlugin {
             this.td = <HTMLTableCellElement>node;
             this.calcAndShowHandle();
         }
-    }
+    };
 
     private calcAndShowHandle() {
         if (this.td) {
@@ -74,7 +74,7 @@ export default class TableResize implements EditorPlugin {
 
     private adjustHandle(pageX: number) {
         let handle = this.getResizeHandle();
-        handle.style.left = (handle.offsetLeft + pageX - this.pageX) + 'px';
+        handle.style.left = handle.offsetLeft + pageX - this.pageX + 'px';
         this.pageX = pageX;
     }
 
@@ -85,16 +85,20 @@ export default class TableResize implements EditorPlugin {
     }
 
     private getResizeHandle() {
-        return this.editor.getCustomData(TABLE_RESIZE_HANDLE_KEY, () => {
-            let document =  this.editor.getDocument();
-            let handle = fromHtml(CONTAINER_HTML, document)[0] as HTMLElement;
-            document.body.appendChild(handle);
-            handle.addEventListener('mousedown', this.onMouseDown);
-            return handle;
-        }, handle => {
-            handle.removeEventListener('mousedown', this.onMouseDown);
-            handle.parentNode.removeChild(handle);
-        });
+        return this.editor.getCustomData(
+            TABLE_RESIZE_HANDLE_KEY,
+            () => {
+                let document = this.editor.getDocument();
+                let handle = fromHtml(CONTAINER_HTML, document)[0] as HTMLElement;
+                document.body.appendChild(handle);
+                handle.addEventListener('mousedown', this.onMouseDown);
+                return handle;
+            },
+            handle => {
+                handle.removeEventListener('mousedown', this.onMouseDown);
+                handle.parentNode.removeChild(handle);
+            }
+        );
     }
 
     private onMouseDown = (e: MouseEvent) => {
@@ -107,13 +111,13 @@ export default class TableResize implements EditorPlugin {
 
         let handle = this.getResizeHandle();
         handle.style.borderWidth = '0 1px';
-    }
+    };
 
     private onMouseMove = (e: MouseEvent) => {
         this.adjustHandle(e.pageX);
         e.preventDefault();
         e.stopPropagation();
-    }
+    };
 
     private onMouseUp = (e: MouseEvent) => {
         let document = this.editor.getDocument();
@@ -128,12 +132,31 @@ export default class TableResize implements EditorPlugin {
         cellPadding = isNaN(cellPadding) ? 0 : cellPadding;
 
         if (e.pageX != this.initialPageX) {
-            let newWidth = this.td.clientWidth - cellPadding * 2 + (e.pageX - this.initialPageX) * (this.isRtl ? -1 : 1);
-            execFormatWithUndo(this.editor, () => setTableColumnWidth(this.td, newWidth + 'px'));
+            let newWidth =
+                this.td.clientWidth -
+                cellPadding * 2 +
+                (e.pageX - this.initialPageX) * (this.isRtl ? -1 : 1);
+            execFormatWithUndo(
+                this.editor,
+                () => this.setTableColumnWidth(newWidth + 'px'),
+                true /*preserveSelection*/
+            );
         }
 
         this.calcAndShowHandle();
         this.pageX = -1;
         this.editor.focus();
+    };
+
+    private setTableColumnWidth(width: string) {
+        let vtable = new VTable(this.td);
+        vtable.table.style.width = '';
+        vtable.forEachCellOfCurrentColumn(cell => {
+            if (cell.td) {
+                cell.td.style.width = cell.td == this.td ? width : '';
+            }
+        });
+        vtable.writeBack();
+        return this.editor.contains(this.td) ? this.td : vtable.getCurrentTd();
     }
 }

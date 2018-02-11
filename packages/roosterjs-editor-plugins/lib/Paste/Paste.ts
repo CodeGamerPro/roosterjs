@@ -8,7 +8,13 @@ import {
     PluginEvent,
     PluginEventType,
 } from 'roosterjs-editor-types';
-import { applyFormat, fromHtml, getFirstLeafNode, getNextLeafSibling, textToHtml } from 'roosterjs-editor-dom';
+import {
+    applyFormat,
+    fromHtml,
+    getFirstLeafNode,
+    getNextLeafSibling,
+    textToHtml,
+} from 'roosterjs-editor-dom';
 import { Editor, EditorPlugin, buildSnapshot, restoreSnapshot } from 'roosterjs-editor-core';
 import { insertImage } from 'roosterjs-editor-api';
 import buildClipboardData from './buildClipboardData';
@@ -52,7 +58,9 @@ export default class Paste implements EditorPlugin {
                 let changed = convertPastedContentFromWord(beforePasteEvent.fragment);
                 changed = removeUselessCss(beforePasteEvent.fragment) || changed;
                 if (changed) {
-                    beforePasteEvent.clipboardData.html = this.documentFragmentToHtml(beforePasteEvent.fragment);
+                    beforePasteEvent.clipboardData.html = this.documentFragmentToHtml(
+                        beforePasteEvent.fragment
+                    );
                 }
             }
         }

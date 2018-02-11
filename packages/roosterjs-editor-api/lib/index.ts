@@ -3,12 +3,16 @@ export {
     clearCursorEventDataCache,
 } from './cursor/cacheGetCursorEventData';
 export { default as CursorData } from './cursor/CursorData';
-export { default as getNodeAtCursor, cacheGetListElement, cacheGetNodeAtCursor } from './cursor/getNodeAtCursor';
+export {
+    default as getNodeAtCursor,
+    cacheGetListElement,
+    cacheGetNodeAtCursor,
+} from './cursor/getNodeAtCursor';
 export { default as queryNodesWithSelection } from './cursor/queryNodesWithSelection';
 export { default as replaceRangeWithNode } from './cursor/replaceRangeWithNode';
 export {
     default as replaceTextBeforeCursorWithNode,
-    validateAndGetRangeForTextBeforeCursor
+    validateAndGetRangeForTextBeforeCursor,
 } from './cursor/replaceTextBeforeCursorWithNode';
 export { default as cacheGetListState } from './format/cacheGetListState';
 export { default as clearFormat } from './format/clearFormat';
@@ -38,3 +42,4 @@ export { default as toggleHeader } from './format/toggleHeader';
 export { default as matchLink } from './linkMatch/matchLink';
 export { default as insertTable } from './table/insertTable';
 export { default as editTable } from './table/editTable';
+export { default as formatTable } from './table/formatTable';

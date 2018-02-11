@@ -172,6 +172,32 @@ export const enum ListState {
     Numbering = 2,
 }
 
+/**
+ * Table format
+ */
+export interface TableFormat {
+    /**
+     * Background color for even rows
+     */
+    bgColorEven: string;
+    /**
+     * Background color for odd rows
+     */
+    bgColorOdd: string;
+    /**
+     * Top border color for each row
+     */
+    topBorderColor: string;
+    /**
+     * Bottom border color for each row
+     */
+    bottomBorderColor: string;
+    /**
+     * Vertical border color for each row
+     */
+    verticalBorderColor: string;
+}
+
 export const enum TableOperation {
     /**
      * Insert a row above current row
@@ -599,38 +625,30 @@ export function wrap(node: Node, htmlFragment: string): Node;
 
 export function wrapAll(nodes: Node[], htmlFragment?: string): Node;
 
-/**
- * Modify the given TABLE
- * @param operation Operation to perform
- * @param node The TABLE or TD node. If TABLE node is provided, it will use the first TD as current node
- */
-export function modifyTable(td: HTMLTableCellElement, operation: TableOperation): HTMLTableCellElement;
-
-export function setTableColumnWidth(td: HTMLTableCellElement, width: string): HTMLTableCellElement;
-
-export function formatTable(table: HTMLTableElement, formatName: TableFormatName): void;
-
-export interface TableFormat {
-    className: string;
-    bgColorEven: string;
-    bgColorOdd: string;
-    topBorder: string;
-    bottomBorder: string;
-    verticalBorder: string;
+export class VTable {
+    table: HTMLTableElement;
+    cells: VCell[][];
+    row: number;
+    col: number;
+    private trPrototype;
+    constructor(node: HTMLTableElement | HTMLTableCellElement);
+    writeBack(): void;
+    applyFormat(format: TableFormat): void;
+    forEachCellOfCurrentColumn(callback: (cell: VCell, row: VCell[], i: number) => void): void;
+    forEachCellOfCurrentRow(callback: (cell: VCell, i: number) => void): void;
+    getCell(row: number, col: number): VCell;
+    getCurrentTd(): HTMLTableCellElement;
+    static moveChildren(fromNode: Node, toNode?: Node): void;
+    static cloneNode<T extends Node>(node: T): T;
+    static cloneCell(cell: VCell): VCell;
+    private recalcSpans(row, col);
 }
 
-export function addTableFormat(name: string, format: TableFormat): void;
-
-export type TableFormatName = keyof typeof TABLE_STYLE_CLASS_MAP;
-
-export const TABLE_STYLE_CLASS_MAP: {
-    Default: TableFormat;
-    LightLines: TableFormat;
-    TwoTones: TableFormat;
-    LightBands: TableFormat;
-    Grid: TableFormat;
-    Clear: TableFormat;
-};
+export interface VCell {
+    td?: HTMLTableCellElement;
+    spanLeft?: boolean;
+    spanAbove?: boolean;
+}
 
 export class Editor {
     private undoService;
@@ -1383,10 +1401,9 @@ export function matchLink(url: string): LinkData;
  * if columns <= 4, width = 120px; if columns <= 6, width = 100px; else width = 70px
  * @param rows Number of rows in table
  * @param format (Optional) The table format. If not passed, the default format will be applied:
- * cellSpacing = '0', cellPadding = '0', borderWidth = '1px', borderStyle = 'solid', borderColor = '#c6c6c6',
- * borderCollapse = 'collapse'
+ * background color: #FFF; border color: #ABABAB
  */
-export function insertTable(editor: Editor, columns: number, rows: number, format?: TableFormatName): void;
+export function insertTable(editor: Editor, columns: number, rows: number, format?: TableFormat): void;
 
 /**
  * Edit table with given operation. If there is no table at cursor then no op.
@@ -1394,6 +1411,13 @@ export function insertTable(editor: Editor, columns: number, rows: number, forma
  * @param operation Table operation
  */
 export function editTable(editor: Editor, operation: TableOperation): void;
+
+/**
+ * Format table
+ * @param table The table to format
+ * @param formatName Name of the format to use
+ */
+export function formatTable(table: HTMLTableElement, format: TableFormat): void;
 
 export class DefaultShortcut implements EditorPlugin {
     private editor;
@@ -1595,6 +1619,7 @@ export class TableResize implements EditorPlugin {
     private onMouseDown;
     private onMouseMove;
     private onMouseUp;
+    private setTableColumnWidth(width);
 }
 
 export class ImageResizePlugin implements EditorPlugin {
